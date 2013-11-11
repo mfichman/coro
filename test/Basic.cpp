@@ -22,18 +22,33 @@
 
 #include "coro/Common.hpp"
 #include "coro/Coroutine.hpp"
+#include "coro/Hub.hpp"
 
 #include <iostream>
 
-void foo() {
+char* recurse(int foo) {
+    if(foo ==0) { return 0; }
+    char buf[1024];
+    char* buf2 = buf;
+    recurse(foo-1);
+    return buf2;
+}
 
+void foo() {
+//    recurse(900);
+
+    try {
+        std::cout << "hello" << std::endl;
+        coro::yield();
+    } catch (coro::ExitException const& ex) {
+        std::cout << "exception" << std::endl;
+        throw;
+    }
     std::cout << "hello" << std::endl;
 }
 
 int main() {
-    auto c = coro::Coroutine(foo);
-    c.swap();
-    
-
+    auto c = coro::spawn(foo);
+    coro::run();
     return 0;
 }

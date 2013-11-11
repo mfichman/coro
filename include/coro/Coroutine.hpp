@@ -26,16 +26,22 @@
 
 extern "C" {
 void __cdecl coroSwapContext(coro::Coroutine* from, coro::Coroutine* to);
-void __cdecl coroStart();
+void __cdecl coroStart() throw();
 }
 
 namespace coro {
+
+Ptr<Coroutine> current();
+Ptr<Coroutine> main();
+void yield();
+void fault(int signo, siginfo_t* info, void* context);
+
 
 class Stack {
 public:
     Stack(uint64_t size);
     ~Stack(); 
-    uint8_t* end() { return data_+sizeof(size_); }
+    uint8_t* end() { return data_+size_; }
     uint8_t* begin() { return data_; }
 private:
     uint8_t* data_;
@@ -46,31 +52,38 @@ private:
 class ExitException {
 };
 
-enum class CoroutineStatus { NEW, RUNNING, SUSPENDED, DEAD };
 
 class Coroutine : public std::enable_shared_from_this<Coroutine> {
 // A coroutine, or lightweight cooperative thread.  A coroutine runs a function
 // that is allowed to suspend and resume at any point during its execution.
 public:
+    enum Status { NEW, RUNNING, SUSPENDED, DEAD, DELETED };
+
+    ~Coroutine();
+
     template <typename F>
     Coroutine(F func) : stack_(CORO_STACK_SIZE) { init(func); }
+    Status status() const { return status_; }
     void swap(); // Passes control to this coroutine
 
-    static Ptr<Coroutine> current();
-    static Ptr<Coroutine> hub();
 private:
     Coroutine(); // Special constructor for the main thread.
     void init(std::function<void()> const& func);
     void commit(uint64_t addr);
+    void swapContext();
     void exit();
-    void start();
+    void start() throw();
+    bool isMain() { return !stack_.begin(); }
 
     uint8_t* stackPointer_; // This field must be the first field in the coroutine
     std::function<void()> func_; 
-    CoroutineStatus status_;
+    Status status_;
     Stack stack_;
 
-    friend void ::coroStart();
+    friend Ptr<Coroutine> coro::current();
+    friend Ptr<Coroutine> coro::main();
+    friend void ::coroStart() throw();
+    friend void coro::fault(int signo, siginfo_t* info, void* context);
 };
 
 }

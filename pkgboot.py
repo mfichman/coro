@@ -26,12 +26,14 @@ class Package:
     defines = {}
     includes = []
     libs = []
+    frameworks = []
     path = []
     lib_path = []
     major_version = '0'
     minor_version = '0'
     patch = '0'
     kind = 'lib'
+    frameworks = []
 
     def __init__(self):
 
@@ -74,18 +76,33 @@ class Package:
         if self.env['PLATFORM'] == 'win32':
             self.env.Append(CXXFLAGS='/MT /EHsc /Zi /Gm /FS')
             self.env.Append(CXXFLAGS='/Fpbuild/Common.pch')
-            self.env.Append(LINKFLAGS='/DEBUG')
             self.env.Append(CXXFLAGS='/Yu%s' % self.pch)
+            self.env.Append(LINKFLAGS='/DEBUG')
 
-            pchenv=self.env.Clone()
+            pchenv = self.env.Clone()
             pchenv.Append(CXXFLAGS='/Yc%s' % self.pch)
-            pch=pchenv.StaticObject('build/src/Common', 'build/src/Common.cpp')
+            pch = pchenv.StaticObject('build/src/Common', 'build/src/Common.cpp')
+        else:
+            self.env['CXX'] = 'clang++'
+            self.env.Append(CXXFLAGS='-std=c++11 -stdlib=libc++ -g -Wall -Werror -ansi')
+            self.env.Append(CXXFLAGS='-Wno-c++11-extensions')
+            for framework in self.frameworks:
+                self.env.Append(LINKFLAGS='-framework %s' % framework)
+            self.env.Append(LINKFLAGS='-stdlib=libc++')
 
-        src = self.env.Glob('build/src/**.cpp')+self.env.Glob('build/src/**.c')+self.env.Glob('build/src/**.asm')
+            pchenv = self.env.Clone()
+            pchenv.Append(CXXFLAGS='-x c++-header -o Common.h.gch')
+            pch = pchenv.StaticObject('build/src/Common', 'build/src/Common.cpp')
+
+        src = self.env.Glob('build/src/**.cpp')+self.env.Glob('build/src/**.c')
+        if self.env['PLATFORM'] == 'win32':
+            src += self.env.Glob('build/src/**.asm')
+        else:
+            src += self.env.Glob('build/src/**.s')
         src = filter(lambda x: 'Common.cpp' not in x.name, src)
         self.env.Depends(src, pch) # Wait for pch to build
 
-        self.lib = self.env.StaticLibrary('lib/%s' % self.name, (src, pch))
+        self.lib = self.env.StaticLibrary('lib/%s' % self.name, (src))
         if self.kind == 'bin':
             main = self.env.Glob('Main.cpp')
             self.program = self.env.Program('bin/%s' % self.name, (self.lib, main))
@@ -95,7 +112,7 @@ class Package:
         for test in self.env.Glob('build/test/**.cpp'):
             self.env.Depends(test, pch)
             name = test.name.replace('.cpp', '')
-            prog = self.env.Program('bin/test/%s' % name, (test, self.lib, pch))
+            prog = self.env.Program('bin/test/%s' % name, (test, self.lib))
             if 'check' in COMMAND_LINE_TARGETS:
                 self.tests.append(self.env.Test(name, prog))
         if 'check' in COMMAND_LINE_TARGETS:

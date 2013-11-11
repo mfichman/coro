@@ -27,16 +27,22 @@
 #define WIN32_LEAN_AND_MEAN
 #define GLEW_STATIC
 #include <windows.h>
-#include <GL/glew.h>
-#include <Gl/gl.h>
 #undef ERROR
 #undef Ptr
+#endif
+
+#ifdef __APPLE__
+#include <sys/mman.h>
+#include <unistd.h>
+#include <signal.h>
 #endif
 
 #include <memory>
 #include <functional>
 #include <cstdint>
 #include <cassert>
+#include <unordered_set>
+#include <set>
 
 #ifndef CORO_STACK_SIZE
 #define CORO_STACK_SIZE 1048576
@@ -45,6 +51,7 @@
 namespace coro {
 class Coroutine;
 class Channel;
+class Hub;
 class Event;
 
 template <typename T>
