@@ -20,56 +20,35 @@
  * IN THE SOFTWARE.
  */
 
-#include "coro/Common.hpp"
-#include "coro/Coroutine.hpp"
-#include "coro/Hub.hpp"
 
-#include <iostream>
+namespace coro {
 
-char* recurse(int foo) {
-    if(foo ==0) { return 0; }
-    char buf[1024];
-    char* buf2 = buf;
-    recurse(foo-1);
-    return buf2;
-}
+void Hub::poll() {
+// Pool for I/O events.  If there are pending coroutines, then don't block
+// indefinitely -- just check for any ready I/O.  If there are timers, block
+// only until the min timer is ready.
+    size_t tasks = runnable_.size()+timeout_.size();
+    struct timespec timeout{0};
+    struct kevent event{0};
 
-void foo() {
-//    recurse(900);
-
-    try {
-        std::cout << "hello" << std::endl;
-        coro::yield();
-    } catch (coro::ExitException const& ex) {
-        std::cout << "exception" << std::endl;
-        throw;
+    if (!timeout_.empty() && runnable_.empty()) {
+        auto diff = timeout_.top().time()-Time::now();
+        if (diff > Time::sec(0)) {
+            timeout = diff.timespec();
+        }
     }
-    std::cout << "hello" << std::endl;
 
-    coro::sleep(coro::Time::sec(4));
-    std::cout << "one\n" << std::endl;
-    coro::sleep(coro::Time::sec(4));
-    std::cout << "two\n" << std::endl;
-}
-
-void bar() {
-    while (true) {
-    coro::sleep(coro::Time::millisec(1000));
-    std::cout << "barrrrrr" << std::endl;
+    int res = kevent(handle_, 0, 0, &event, 1, (tasks <= 0 ? 0 : &timeout));
+    //self->iobytes = event.data;
+    if (res < 0) {
+        throw SystemError();
+    } else if (res == 0) {
+        // No events
+    } else {
+        assert("null coroutine"&&event.udata);
+        Coroutine* coro = (Coroutine*)event.udata;
+        coro->swap();
     }
 }
 
-void baz() {
-    while (true) {
-    coro::sleep(coro::Time::millisec(100));
-    std::cout << "baz" << std::endl;
-    }
-}
-
-int main() {
-    coro::start(baz);
-    coro::start(bar);
-    coro::start(foo);
-    coro::run();
-    return 0;
 }

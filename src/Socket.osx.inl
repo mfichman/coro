@@ -20,56 +20,38 @@
  * IN THE SOFTWARE.
  */
 
-#include "coro/Common.hpp"
-#include "coro/Coroutine.hpp"
-#include "coro/Hub.hpp"
+namespace coro {
 
-#include <iostream>
-
-char* recurse(int foo) {
-    if(foo ==0) { return 0; }
-    char buf[1024];
-    char* buf2 = buf;
-    recurse(foo-1);
-    return buf2;
-}
-
-void foo() {
-//    recurse(900);
-
-    try {
-        std::cout << "hello" << std::endl;
-        coro::yield();
-    } catch (coro::ExitException const& ex) {
-        std::cout << "exception" << std::endl;
-        throw;
+void Socket::connect(SocketAddr const& addr) {
+// Connect this socket to a remote socket
+    if (fcntl(sd_, F_SETFL, O_NONBLOCK) < 0) {
+        throw SystemError();
     }
-    std::cout << "hello" << std::endl;
 
-    coro::sleep(coro::Time::sec(4));
-    std::cout << "one\n" << std::endl;
-    coro::sleep(coro::Time::sec(4));
-    std::cout << "two\n" << std::endl;
-}
-
-void bar() {
-    while (true) {
-    coro::sleep(coro::Time::millisec(1000));
-    std::cout << "barrrrrr" << std::endl;
+    // Set the socket in non-blocking mode, so that the call to connect() below
+    // and calls to send/recv do not block.
+    struct sockaddr_in sin = addr.sockaddr();
+    int ret = ::connect(sd_, (struct sockaddr*)&sin, sizeof(sin));
+    if (ret < 0 && errno != EINPROGRESS) {
+        throw SystemError();
     }
-}
 
-void baz() {
-    while (true) {
-    coro::sleep(coro::Time::millisec(100));
-    std::cout << "baz" << std::endl;
+    int kqfd = hub()->handle();
+    int flags = EV_ADD|EV_ONESHOT|EV_EOF;
+    struct kevent ev{0};
+    EV_SET(&ev, sd_, EVFILT_WRITE, flags, 0, 0, current().get());
+    if (kevent(kqfd, &ev, 1, 0, 0, 0) < 0) {
+        throw SystemError();
     }
+
+    Ptr<Coroutine> anchor = current();
+    yield();    
+
+    // Check for connect error code
+    if (::read(sd_, 0, 0) < 0) {
+        throw SystemError();
+    } 
 }
 
-int main() {
-    coro::start(baz);
-    coro::start(bar);
-    coro::start(foo);
-    coro::run();
-    return 0;
+
 }

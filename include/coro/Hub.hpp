@@ -20,56 +20,57 @@
  * IN THE SOFTWARE.
  */
 
+#pragma once
+
 #include "coro/Common.hpp"
 #include "coro/Coroutine.hpp"
-#include "coro/Hub.hpp"
 
-#include <iostream>
+namespace coro {
 
-char* recurse(int foo) {
-    if(foo ==0) { return 0; }
-    char buf[1024];
-    char* buf2 = buf;
-    recurse(foo-1);
-    return buf2;
-}
+Ptr<Hub> hub();
+void run();
 
-void foo() {
-//    recurse(900);
+class Timeout {
+public:
+    Timeout(Time const& time, Ptr<Coroutine> coro) : time_(time), coroutine_(coro) {}
+    bool operator<(Timeout const& rhs) const { return time_ > rhs.time_; }
+    bool operator==(Timeout const& rhs) const { return time_ == rhs.time_; }
 
-    try {
-        std::cout << "hello" << std::endl;
-        coro::yield();
-    } catch (coro::ExitException const& ex) {
-        std::cout << "exception" << std::endl;
-        throw;
+    Time const& time() const { return time_; }
+    Ptr<Coroutine> coroutine() const { return coroutine_; }
+private:
+    Time time_;
+    Ptr<Coroutine> coroutine_;
+};
+
+class Hub {
+public:
+    template <typename F>
+    void start(F func) { 
+        runnable_.push_back(Ptr<Coroutine>(new Coroutine(func)));
     }
-    std::cout << "hello" << std::endl;
+    void quiesce();
+    void poll();
+    void run();
+    int handle() const { return handle_; }
 
-    coro::sleep(coro::Time::sec(4));
-    std::cout << "one\n" << std::endl;
-    coro::sleep(coro::Time::sec(4));
-    std::cout << "two\n" << std::endl;
+private:
+    Hub();
+    std::vector<Ptr<Coroutine>> runnable_;
+    std::priority_queue<Timeout, std::vector<Timeout>> timeout_;
+    int blocked_;
+    int handle_; 
+
+    void timeoutIs(Timeout const& timeout);
+
+    friend Ptr<Hub> coro::hub();
+    friend void coro::sleep(Time const& time);
+    friend class Coroutine;
+};
+
+template <typename F>
+void start(F func) {
+    hub()->start(func);
 }
 
-void bar() {
-    while (true) {
-    coro::sleep(coro::Time::millisec(1000));
-    std::cout << "barrrrrr" << std::endl;
-    }
-}
-
-void baz() {
-    while (true) {
-    coro::sleep(coro::Time::millisec(100));
-    std::cout << "baz" << std::endl;
-    }
-}
-
-int main() {
-    coro::start(baz);
-    coro::start(bar);
-    coro::start(foo);
-    coro::run();
-    return 0;
 }

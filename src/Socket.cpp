@@ -1,0 +1,97 @@
+/*
+ * Copyright (c) 2013 Matt Fichman
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to
+ * deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, APEXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
+
+#include "coro/Common.hpp"
+#include "coro/Socket.hpp"
+#include "coro/Coroutine.hpp"
+#include "coro/Hub.hpp"
+#include "coro/Error.hpp"
+
+#ifdef __APPLE__
+#include "Socket.osx.inl"
+#elif defined(_WIN32)
+#include "Socket.win.inl"
+#else
+#include "Socket.linux.inl"
+#endif
+
+namespace coro {
+
+struct in_addr SocketAddr::inaddr() const {
+// Attempts to translate from the input string as if it were a dotted quad
+// first.  If this fails, then assume that the address string is a DNS name,
+// and do a DNS lookup.
+    struct in_addr in;
+    if (inet_pton(AF_INET, (char*)host.c_str(), &in) == 1) { 
+        return in;
+    }
+
+    struct addrinfo* res = 0;
+    if (getaddrinfo((char*)host.c_str(), 0, 0, &res)) {
+        throw SystemError();
+    }
+    for(struct addrinfo* addr = res; addr; addr = addr->ai_next) {
+        struct sockaddr_in* sin = (struct sockaddr_in*)addr->ai_addr;
+        if (sin->sin_addr.s_addr) {
+            freeaddrinfo(res);
+            return sin->sin_addr; 
+        }
+    }
+    freeaddrinfo(res);
+    assert(!"no addresses found");
+}
+
+struct sockaddr_in SocketAddr::sockaddr() const {
+// Returns the socket addr used by the low-level socket API 
+    struct sockaddr_in sin{0};
+    sin.sin_family = AF_INET;
+    sin.sin_addr = inaddr();
+    sin.sin_port = htons(port);
+    return sin;
+}
+
+Socket::Socket(int type, int protocol) : sd_(0) {
+// Creates a new socket; throws a socket exception if creation fails
+    sd_ = socket(AF_INET, type, protocol);
+    if(sd_<0) {
+        throw SystemError();
+    }
+}
+
+void Socket::bind(SocketAddr const& addr) {
+// Binds the socket to a port
+    struct sockaddr_in sin = addr.sockaddr();
+    if (::bind(sd_, (struct sockaddr*)&sin, sizeof(sin)) < 0) {
+        throw SystemError();
+    }
+}
+
+void Socket::close() {
+#ifdef _WIN32
+    ::CloseHandle(sd_);
+#else
+    ::close(sd_);
+#endif
+    sd_ = -1;
+}
+
+}

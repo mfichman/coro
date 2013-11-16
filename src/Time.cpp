@@ -21,55 +21,24 @@
  */
 
 #include "coro/Common.hpp"
-#include "coro/Coroutine.hpp"
-#include "coro/Hub.hpp"
+#include "coro/Time.hpp"
 
-#include <iostream>
+namespace coro {
 
-char* recurse(int foo) {
-    if(foo ==0) { return 0; }
-    char buf[1024];
-    char* buf2 = buf;
-    recurse(foo-1);
-    return buf2;
+Time Time::now() {
+#ifdef __APPLE__
+    struct timeval ts{0};
+    gettimeofday(&ts, 0);
+    return Time::sec(ts.tv_sec)+Time::microsec(ts.tv_usec); 
+#endif
 }
 
-void foo() {
-//    recurse(900);
-
-    try {
-        std::cout << "hello" << std::endl;
-        coro::yield();
-    } catch (coro::ExitException const& ex) {
-        std::cout << "exception" << std::endl;
-        throw;
-    }
-    std::cout << "hello" << std::endl;
-
-    coro::sleep(coro::Time::sec(4));
-    std::cout << "one\n" << std::endl;
-    coro::sleep(coro::Time::sec(4));
-    std::cout << "two\n" << std::endl;
+struct timespec Time::timespec() const {
+// Convert to a timespec struct for use with various system calls
+    struct timespec out{0};
+    out.tv_sec = microsec_/1000000;
+    out.tv_nsec = (microsec_%1000000)*1000;
+    return out;
 }
 
-void bar() {
-    while (true) {
-    coro::sleep(coro::Time::millisec(1000));
-    std::cout << "barrrrrr" << std::endl;
-    }
-}
-
-void baz() {
-    while (true) {
-    coro::sleep(coro::Time::millisec(100));
-    std::cout << "baz" << std::endl;
-    }
-}
-
-int main() {
-    coro::start(baz);
-    coro::start(bar);
-    coro::start(foo);
-    coro::run();
-    return 0;
 }

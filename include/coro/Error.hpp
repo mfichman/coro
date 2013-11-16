@@ -20,56 +20,19 @@
  * IN THE SOFTWARE.
  */
 
+#pragma once
+
 #include "coro/Common.hpp"
-#include "coro/Coroutine.hpp"
-#include "coro/Hub.hpp"
 
-#include <iostream>
+namespace coro {
 
-char* recurse(int foo) {
-    if(foo ==0) { return 0; }
-    char buf[1024];
-    char* buf2 = buf;
-    recurse(foo-1);
-    return buf2;
-}
+class SystemError {
+// Encapsulates an os-level error as an exception.
+public:
+    SystemError(int error) : error(error) {}
+    SystemError();
+    int const error;
+};
 
-void foo() {
-//    recurse(900);
 
-    try {
-        std::cout << "hello" << std::endl;
-        coro::yield();
-    } catch (coro::ExitException const& ex) {
-        std::cout << "exception" << std::endl;
-        throw;
-    }
-    std::cout << "hello" << std::endl;
-
-    coro::sleep(coro::Time::sec(4));
-    std::cout << "one\n" << std::endl;
-    coro::sleep(coro::Time::sec(4));
-    std::cout << "two\n" << std::endl;
-}
-
-void bar() {
-    while (true) {
-    coro::sleep(coro::Time::millisec(1000));
-    std::cout << "barrrrrr" << std::endl;
-    }
-}
-
-void baz() {
-    while (true) {
-    coro::sleep(coro::Time::millisec(100));
-    std::cout << "baz" << std::endl;
-    }
-}
-
-int main() {
-    coro::start(baz);
-    coro::start(bar);
-    coro::start(foo);
-    coro::run();
-    return 0;
 }

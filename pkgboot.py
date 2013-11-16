@@ -18,6 +18,22 @@ def run_test(target, source, env):
     except subprocess.CalledProcessError, e:
         return 1
 
+def build_pch(target, source, env):
+    try:
+        args = (
+            str(env['CXX']),
+            str(env['CXXFLAGS']),
+            '-x'
+            'c++-header',
+            str(source[0]),
+            '-o',
+            str(target[0]),
+        )
+        print(' '.join(args))
+        subprocess.check_call(shlex.split(' '.join(args)))
+    except subprocess.CalledProcessError, e:
+        return 1
+
 class Package:
     """
     Defines a workspace for a package.  Automatically sets up all the usual SCons 
@@ -73,48 +89,51 @@ class Package:
         self.env.Append(LIBPATH=self.lib_path)
         self.env.Append(LIBS=self.libs)
 
+        src = []
+
         if self.env['PLATFORM'] == 'win32':
             self.env.Append(CXXFLAGS='/MT /EHsc /Zi /Gm /FS')
             self.env.Append(CXXFLAGS='/Fpbuild/Common.pch')
             self.env.Append(CXXFLAGS='/Yu%s' % self.pch)
             self.env.Append(LINKFLAGS='/DEBUG')
+            src += self.env.Glob('build/src/**.asm')
 
             pchenv = self.env.Clone()
             pchenv.Append(CXXFLAGS='/Yc%s' % self.pch)
             pch = pchenv.StaticObject('build/src/Common', 'build/src/Common.cpp')
         else:
             self.env['CXX'] = 'clang++'
-            self.env.Append(CXXFLAGS='-std=c++11 -stdlib=libc++ -g -Wall -Werror -ansi')
-            self.env.Append(CXXFLAGS='-Wno-c++11-extensions')
+            self.env.Append(CXXFLAGS='-std=c++11 -stdlib=libc++ -g -Wall -Werror -fPIC')
             for framework in self.frameworks:
                 self.env.Append(LINKFLAGS='-framework %s' % framework)
             self.env.Append(LINKFLAGS='-stdlib=libc++')
+            self.env.Append(BUILDERS={'Pch': Builder(action=build_pch)})
+            src += self.env.Glob('build/src/**.s')
 
             pchenv = self.env.Clone()
-            pchenv.Append(CXXFLAGS='-x c++-header -o Common.h.gch')
-            pch = pchenv.StaticObject('build/src/Common', 'build/src/Common.cpp')
+            pch = pchenv.Pch('include/%s/Common.hpp.pch' % self.name, 'include/%s' % self.pch)
+            self.env.Append(CXXFLAGS='-include include/%s/Common.hpp' % self.name)
 
-        src = self.env.Glob('build/src/**.cpp')+self.env.Glob('build/src/**.c')
-        if self.env['PLATFORM'] == 'win32':
-            src += self.env.Glob('build/src/**.asm')
-        else:
-            src += self.env.Glob('build/src/**.s')
+        src += self.env.Glob('build/src/**.cpp')
+        src += self.env.Glob('build/src/**.c')
         src = filter(lambda x: 'Common.cpp' not in x.name, src)
         self.env.Depends(src, pch) # Wait for pch to build
 
-        self.lib = self.env.StaticLibrary('lib/%s' % self.name, (src))
+        self.lib = self.env.SharedLibrary('lib/%s' % self.name, src)
         if self.kind == 'bin':
             main = self.env.Glob('Main.cpp')
             self.program = self.env.Program('bin/%s' % self.name, (self.lib, main))
 
         self.env.Append(BUILDERS={'Test': Builder(action=run_test)})
         self.tests = []
+        testenv = self.env.Clone()
+        testenv.Append(LIBS=self.lib)
         for test in self.env.Glob('build/test/**.cpp'):
             self.env.Depends(test, pch)
             name = test.name.replace('.cpp', '')
-            prog = self.env.Program('bin/test/%s' % name, (test, self.lib))
+            prog = testenv.Program('bin/test/%s' % name, test)
             if 'check' in COMMAND_LINE_TARGETS:
-                self.tests.append(self.env.Test(name, prog))
+                self.tests.append(testenv.Test(name, prog))
         if 'check' in COMMAND_LINE_TARGETS:
             self.env.Alias('check', self.tests)
         

@@ -1,3 +1,4 @@
+
 /*
  * Copyright (c) 2013 Matt Fichman
  *
@@ -20,56 +21,33 @@
  * IN THE SOFTWARE.
  */
 
+#pragma once
+
 #include "coro/Common.hpp"
-#include "coro/Coroutine.hpp"
-#include "coro/Hub.hpp"
 
-#include <iostream>
+namespace coro {
 
-char* recurse(int foo) {
-    if(foo ==0) { return 0; }
-    char buf[1024];
-    char* buf2 = buf;
-    recurse(foo-1);
-    return buf2;
-}
+class Time {
+public:
+    static Time sec(int64_t sec) { return Time(sec*1000000); }
+    static Time millisec(int64_t ms) { return Time(ms*1000); }
+    static Time microsec(int64_t us) { return Time(us); }
+    static Time now();
 
-void foo() {
-//    recurse(900);
+    bool operator<(Time const& rhs) const { return microsec_ < rhs.microsec_; }
+    bool operator>(Time const& rhs) const { return microsec_ > rhs.microsec_; }
+    bool operator==(Time const& rhs) const { return microsec_ == rhs.microsec_; }
+    bool operator<=(Time const& rhs) const { return !operator>(rhs); }
+    bool operator>=(Time const& rhs) const { return !operator<(rhs); }
+    bool operator!=(Time const& rhs) const { return !operator==(rhs); }
+    Time operator-(Time const& rhs) const { return Time(microsec_ - rhs.microsec_); }
+    Time operator+(Time const& rhs) const { return Time(microsec_ + rhs.microsec_); }
 
-    try {
-        std::cout << "hello" << std::endl;
-        coro::yield();
-    } catch (coro::ExitException const& ex) {
-        std::cout << "exception" << std::endl;
-        throw;
-    }
-    std::cout << "hello" << std::endl;
+    struct timespec timespec() const;
+    int64_t microsec() const { return microsec_; }
+private:
+    Time(int64_t microsec) : microsec_(microsec) {}
+    int64_t microsec_;
+};
 
-    coro::sleep(coro::Time::sec(4));
-    std::cout << "one\n" << std::endl;
-    coro::sleep(coro::Time::sec(4));
-    std::cout << "two\n" << std::endl;
-}
-
-void bar() {
-    while (true) {
-    coro::sleep(coro::Time::millisec(1000));
-    std::cout << "barrrrrr" << std::endl;
-    }
-}
-
-void baz() {
-    while (true) {
-    coro::sleep(coro::Time::millisec(100));
-    std::cout << "baz" << std::endl;
-    }
-}
-
-int main() {
-    coro::start(baz);
-    coro::start(bar);
-    coro::start(foo);
-    coro::run();
-    return 0;
 }

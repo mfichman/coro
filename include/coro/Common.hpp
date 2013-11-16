@@ -20,12 +20,14 @@
  * IN THE SOFTWARE.
  */
 
-#pragma once
+
+#ifndef CORO_COMMON_HPP
+#define CORO_COMMON_HPP
 
 #ifdef _WIN32
 #define VC_EXTRALEAN
 #define WIN32_LEAN_AND_MEAN
-#define GLEW_STATIC
+#include <winsock2.h>
 #include <windows.h>
 #undef ERROR
 #undef Ptr
@@ -33,8 +35,26 @@
 
 #ifdef __APPLE__
 #include <sys/mman.h>
+#include <sys/socket.h>
+#include <sys/event.h>
+#include <sys/time.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
+#endif
+
+#ifdef __linux__
+#include <sys/socket.h>
+#include <sys/epoll.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <unistd.h>
+#include <fcntl.h>
 #endif
 
 #include <memory>
@@ -43,6 +63,12 @@
 #include <cassert>
 #include <unordered_set>
 #include <set>
+#include <cassert>
+#include <cerrno>
+#include <string>
+#include <algorithm>
+#include <queue>
+#include <vector>
 
 #ifndef CORO_STACK_SIZE
 #define CORO_STACK_SIZE 1048576
@@ -59,3 +85,4 @@ using Ptr = std::shared_ptr<T>;
 
 }
 
+#endif

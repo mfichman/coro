@@ -22,6 +22,7 @@
 
 #include "coro/Common.hpp"
 #include "coro/Coroutine.hpp"
+#include "coro/Hub.hpp"
 #include <iostream>
 
 extern "C" {
@@ -30,8 +31,10 @@ coro::Coroutine* coroCurrent = coro::main().get();
 
 void coroStart() throw() { coroCurrent->start(); }
 
-#ifndef _WIN32
-#include "Coroutine.Unix.cpp.inc"
+#ifdef _WIN32
+#include "Coroutine.win.inl"
+#else
+#include "Coroutine.unix.inl"
 #endif
 
 
@@ -99,7 +102,7 @@ Coroutine::~Coroutine() {
         // not allocate a stack for it.
     } else if (status_ != Coroutine::DEAD && status_ != Coroutine::NEW) {
         status_ = Coroutine::DELETED;
-        swapContext(); // Allow the coroutine to clean up its stack
+        swap(); // Allow the coroutine to clean up its stack
     }
 }
 
@@ -159,19 +162,39 @@ void Coroutine::init(std::function<void()> const& func) {
     memcpy(stackPointer_, &frame, sizeof(frame));
 }
 
-void Coroutine::swap() {
-// Swaps control to this coroutine, causing the current coroutine to suspend.
-// This function returns when another coroutine swaps back to this coroutine.
-// If a coroutine dies it is asleep, then it throws an ExitException, which
-// will cause the coroutine to exit.  If a coroutine is being deleted, and swap
-// is called, then swap will throw an ExitException.
-   // if(!coroCurrent->isMain() && coroCurrent->status_ == Coroutine::DELETED) {
-  //      throw ExitException();
-  //  } 
-    swapContext(); 
+void Coroutine::yield() {
+// Yield temporarily to the hub.  The hub will always reschedule a suspended
+// coroutine to run.
+    assert(coroCurrent == this);
+    switch (coroCurrent->status_) {
+    case Coroutine::RUNNING: coroCurrent->status_ = Coroutine::SUSPENDED; break;
+    case Coroutine::DEAD: break;
+    case Coroutine::DELETED: break; // fallthrough
+    case Coroutine::SUSPENDED: // fallthrough
+    case Coroutine::BLOCKED: // fallthrough
+    case Coroutine::NEW: // fallthrough
+    default: assert(!"illegal state"); break;
+    }
+    main()->swap();
 }
 
-void Coroutine::swapContext() {
+void Coroutine::block() {
+// Block the current coroutine until some event occurs.  The coroutine will not
+// be rescheduled until explicitly scheduled.
+    assert(coroCurrent == this);
+    switch (coroCurrent->status_) {
+    case Coroutine::RUNNING: coroCurrent->status_ = Coroutine::BLOCKED; break;
+    case Coroutine::DEAD: break;
+    case Coroutine::DELETED: break; // fallthrough
+    case Coroutine::SUSPENDED: // fallthrough
+    case Coroutine::BLOCKED: // fallthrough
+    case Coroutine::NEW: // fallthrough
+    default: assert(!"illegal state"); break;
+    }
+    main()->swap();
+}
+
+void Coroutine::swap() {
 // Swaps control to this coroutine, causing the current coroutine to suspend.
 // This function returns when another coroutine swaps back to this coroutine.
 // If a coroutine dies it is asleep, then it throws an ExitException, which
@@ -181,16 +204,9 @@ void Coroutine::swapContext() {
     case Coroutine::DELETED: break;
     case Coroutine::SUSPENDED: status_ = Coroutine::RUNNING; break;
     case Coroutine::NEW: status_ = Coroutine::RUNNING; break;
+    case Coroutine::BLOCKED: status_ = Coroutine::RUNNING; break;
     case Coroutine::RUNNING: return; // already running
     case Coroutine::DEAD: // fallthrough
-    default: assert(!"illegal state"); break;
-    }
-    switch (coroCurrent->status_) {
-    case Coroutine::DEAD: break;
-    case Coroutine::RUNNING: coroCurrent->status_ = Coroutine::SUSPENDED; break;
-    case Coroutine::DELETED: break; // fallthrough
-    case Coroutine::SUSPENDED: // fallthrough
-    case Coroutine::NEW: // fallthrough
     default: assert(!"illegal state"); break;
     }
     coroCurrent = this;
@@ -199,6 +215,7 @@ void Coroutine::swapContext() {
     case Coroutine::DELETED: if (!coroCurrent->isMain()) { throw ExitException(); } break;
     case Coroutine::RUNNING: break; 
     case Coroutine::SUSPENDED: // fallthrough
+    case Coroutine::BLOCKED: // fallthrough
     case Coroutine::NEW: // fallthrough
     case Coroutine::DEAD: // fallthrough
     default: assert(!"illegal state"); break;
@@ -209,12 +226,13 @@ void Coroutine::start() throw() {
 // This function runs the coroutine from the given entry point.
     try {
         func_();
-        exit(); // OK, fell of the end of the coroutine function
+        exit(); // Fell off the end of the coroutine function
     } catch(ExitException const& ex) {
-        exit(); // OK, coroutine was deallocated
+        exit(); // Coroutine was deallocated before exiting
     } catch(...) {
         assert(!"error: coroutine killed by exception");
     }
+    assert(!"error: unreachable");
 }
 
 void Coroutine::exit() {
@@ -274,7 +292,12 @@ Ptr<Coroutine> main() {
 }
 
 void yield() {
-    main()->swap(); 
+    current()->yield();
+}
+
+void sleep(Time const& time) {
+    hub()->timeoutIs(Timeout(Time::now()+time, current()));
+    current()->block();
 }
 
 
