@@ -44,6 +44,9 @@ private:
 };
 
 class Hub {
+// The hub manages all coroutines, events, and I/O.  It runs an event loop that
+// schedules coroutines to run when the events they are waiting on (channel,
+// I/O, etc.) have signaled.
 public:
     template <typename F>
     void start(F func) { 
@@ -53,6 +56,7 @@ public:
     void poll();
     void run();
     int handle() const { return handle_; }
+    std::mutex const& mutex() const { return mutex_; }
 
 private:
     Hub();
@@ -60,6 +64,7 @@ private:
     std::priority_queue<Timeout, std::vector<Timeout>> timeout_;
     int blocked_;
     int handle_; 
+    std::mutex mutex_;
 
     void timeoutIs(Timeout const& timeout);
 

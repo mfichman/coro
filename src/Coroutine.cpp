@@ -23,7 +23,7 @@
 #include "coro/Common.hpp"
 #include "coro/Coroutine.hpp"
 #include "coro/Hub.hpp"
-#include <iostream>
+#include "coro/Error.hpp"
 
 extern "C" {
 coro::Coroutine* coroCurrent = coro::main().get();
@@ -112,6 +112,7 @@ void Coroutine::init(std::function<void()> const& func) {
     func_ = func;
     status_ = Coroutine::NEW;
     commit((uint64_t)stack_.end()-1); 
+    commit((uint64_t)stack_.end()-CORO_STACK_SIZE/2); 
     // Commit the page at the top of the coroutine stack
 
 #ifdef _WIN32
@@ -206,7 +207,7 @@ void Coroutine::swap() {
     case Coroutine::NEW: status_ = Coroutine::RUNNING; break;
     case Coroutine::BLOCKED: status_ = Coroutine::RUNNING; break;
     case Coroutine::RUNNING: return; // already running
-    case Coroutine::DEAD: // fallthrough
+    case Coroutine::DEAD: assert(!"coroutine is dead"); break;
     default: assert(!"illegal state"); break;
     }
     coroCurrent = this;
@@ -224,6 +225,8 @@ void Coroutine::swap() {
 
 void Coroutine::start() throw() {
 // This function runs the coroutine from the given entry point.
+    Ptr<Coroutine> anchor = current();
+    // Coroutine cannot be destroyed until last reference is gone
     try {
         func_();
         exit(); // Fell off the end of the coroutine function
@@ -247,6 +250,7 @@ void Coroutine::exit() {
     default: assert(!"illegal state"); break;
     }
     main()->swap();
+    assert(!"error: coroutine is dead");
 }
 
 void Coroutine::commit(uint64_t addr) {

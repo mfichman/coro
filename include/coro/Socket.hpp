@@ -45,19 +45,20 @@ class Socket {
 // until all data has been sent, or there is an error.
 public:
     Socket(int type=SOCK_STREAM, int protocol=IPPROTO_TCP);
-    ~Socket();
+    ~Socket() { close(); }
     Ptr<Socket> accept();
     void bind(SocketAddr const& addr);
     void close();
     void connect(SocketAddr const& addr);
     void listen(int backlog);
-    void read(char* buf, size_t buflen, int flags=0);
-    void write(char const* buf, size_t buflen, int flags=0);
     void shutdown(int how);
+    ssize_t write(char const* buf, size_t buflen, int flags=0);
+    ssize_t read(char* buf, size_t buflen, int flags=0);
     int fileno();
+    void setsockopt(int level, int option, int value);
 
 private:
-    Socket(int sd) : sd_(sd) {}
+    Socket(int sd, char const* bogus) : sd_(sd) {}
 
     int sd_;
 };

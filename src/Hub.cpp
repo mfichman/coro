@@ -20,8 +20,6 @@
  * IN THE SOFTWARE.
  */
 
-#include <iostream>
-
 #include "coro/Common.hpp"
 #include "coro/Hub.hpp"
 #include "coro/Error.hpp"
@@ -77,6 +75,7 @@ void Hub::quiesce() {
     runnable.swap(runnable_);
     for (auto coroutine : runnable) {
         main()->status_ = Coroutine::SUSPENDED;
+        assert(coroutine->status()!=Coroutine::DEAD);
         coroutine->swap();
         switch (coroutine->status()) {
         case Coroutine::DEAD: break;
@@ -95,6 +94,7 @@ void Hub::quiesce() {
 }
 
 void Hub::run() {
+// Run coroutines and handle I/O until the process exits
     assert(coro::current() == coro::main());
     while (true) {
         quiesce();

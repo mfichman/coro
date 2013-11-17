@@ -26,9 +26,11 @@ namespace coro {
 
 SystemError::SystemError() :
 #ifdef _WIN32   
-    error(GetLastError()) {
+    error_(GetLastError()),
+    msg_(error_) {
 #else
-    error(errno) {
+    error_(errno),
+    msg_(strerror(error_)) {
 #endif
 }
 

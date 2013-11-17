@@ -29,10 +29,14 @@ namespace coro {
 class SystemError {
 // Encapsulates an os-level error as an exception.
 public:
-    SystemError(int error) : error(error) {}
+    SystemError(std::string const& msg) : error_(0), msg_(msg) {}
     SystemError();
-    int const error;
-};
 
+    int error() const { return error_; }
+    std::string const& what() const { return msg_; }
+private:
+    int error_;
+    std::string const msg_;
+};
 
 }

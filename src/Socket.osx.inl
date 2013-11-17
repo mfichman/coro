@@ -44,13 +44,86 @@ void Socket::connect(SocketAddr const& addr) {
         throw SystemError();
     }
 
-    Ptr<Coroutine> anchor = current();
-    yield();    
+    current()->block();    
 
     // Check for connect error code
     if (::read(sd_, 0, 0) < 0) {
         throw SystemError();
     } 
+}
+
+Ptr<Socket> Socket::accept() {
+// Accept a new incoming connection asynchronously. Register to wait for a READ
+// event, which signals that we can call accept() without blocking.
+    int kqfd = hub()->handle();
+    int flags = EV_ADD|EV_ONESHOT;
+    struct kevent ev{0};
+    EV_SET(&ev, sd_, EVFILT_READ, flags, 0, 0, current().get());
+    if (kevent(kqfd, &ev, 1, 0, 0, 0) < 0) {
+        throw SystemError();
+    }
+    // Wait until the socket becomes readable.  At that point, there will be a
+    // peer waiting in the accept queue.
+    current()->block();
+
+    // Accept the peer, and create a new stream socket.
+    struct sockaddr_in sin;
+    socklen_t len = sizeof(sin);
+    int sd = ::accept(sd_, (struct sockaddr*)&sin, &len);
+    if (sd < 0) {
+        throw SystemError();
+    }  
+    if (fcntl(sd, F_SETFL, O_NONBLOCK) < 0) {
+        throw SystemError();
+    }
+    return Ptr<Socket>(new Socket(sd, ""));
+}
+
+ssize_t Socket::read(char* buf, size_t len, int flags) {
+// Read from the socket asynchronously
+    while (true) {
+        auto ret = recv(sd_, buf, len, flags);
+        if (ret < 0 && errno != EAGAIN) {
+            throw SystemError();
+        } else if (ret >= 0) {
+            return ret;
+        }
+        int kqfd = hub()->handle();
+        int kqflags = EV_ADD|EV_ONESHOT|EV_EOF;
+        struct kevent ev{0};
+        EV_SET(&ev, sd_, EVFILT_READ, kqflags, 0, 0, current().get()); 
+        if (kevent(kqfd, &ev, 1, 0, 0, 0) < 0) {
+            throw SystemError();
+        }
+        current()->block();
+    }
+    return 0;
+}
+
+ssize_t Socket::write(char const* buf, size_t len, int flags) {
+// Write asynchronously
+    size_t total = 0;
+    while (true) {
+        auto ret = send(sd_, buf, len, flags);
+        if (ret < 0 && errno != EAGAIN) {
+            throw SystemError();
+        } else if (ret == 0) {
+            return total;
+        } else if (ret > 0) {
+            len -= ret;
+            buf += ret;
+            total += ret; 
+        }
+        int kqfd = hub()->handle();
+        int kqflags = EV_ADD|EV_ONESHOT|EV_EOF;
+        struct kevent ev{0};
+        EV_SET(&ev, sd_, EVFILT_WRITE, kqflags, 0, 0, current().get()); 
+        if (kevent(kqfd, &ev, 1, 0, 0, 0) < 0) {
+            throw SystemError();
+        }
+        current()->block();
+    }
+    return total;
 }
 
 

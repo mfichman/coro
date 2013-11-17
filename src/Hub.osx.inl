@@ -32,7 +32,7 @@ void Hub::poll() {
     struct kevent event{0};
 
     if (!timeout_.empty() && runnable_.empty()) {
-        auto diff = timeout_.top().time()-Time::now();
+        auto const diff = timeout_.top().time()-Time::now();
         if (diff > Time::sec(0)) {
             timeout = diff.timespec();
         }
@@ -45,9 +45,11 @@ void Hub::poll() {
     } else if (res == 0) {
         // No events
     } else {
-        assert("null coroutine"&&event.udata);
-        Coroutine* coro = (Coroutine*)event.udata;
-        coro->swap();
+        auto const coro = (Coroutine*)event.udata;
+        assert(coro->status()!=Coroutine::DEAD);
+        coro->status_ = Coroutine::SUSPENDED;
+        runnable_.push_back(coro->shared_from_this());
+        blocked_--;
     }
 }
 

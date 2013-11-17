@@ -103,6 +103,7 @@ private:
     friend void ::coroStart() throw();
     friend void coro::fault(int signo, siginfo_t* info, void* context);
     friend class coro::Hub;
+    friend class coro::Socket;
 };
 
 }

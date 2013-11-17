@@ -40,20 +40,24 @@ struct in_addr SocketAddr::inaddr() const {
 // Attempts to translate from the input string as if it were a dotted quad
 // first.  If this fails, then assume that the address string is a DNS name,
 // and do a DNS lookup.
-    struct in_addr in;
+    struct in_addr in{0};
+    if (host.empty()) {
+        return in;
+    }
     if (inet_pton(AF_INET, (char*)host.c_str(), &in) == 1) { 
         return in;
     }
-
     struct addrinfo* res = 0;
-    if (getaddrinfo((char*)host.c_str(), 0, 0, &res)) {
-        throw SystemError();
+    auto ret = getaddrinfo(host.c_str(), 0, 0, &res);
+    if (ret) {
+        throw SystemError(gai_strerror(ret));
     }
     for(struct addrinfo* addr = res; addr; addr = addr->ai_next) {
         struct sockaddr_in* sin = (struct sockaddr_in*)addr->ai_addr;
         if (sin->sin_addr.s_addr) {
+            in = sin->sin_addr;
             freeaddrinfo(res);
-            return sin->sin_addr; 
+            return in;
         }
     }
     freeaddrinfo(res);
@@ -81,6 +85,18 @@ void Socket::bind(SocketAddr const& addr) {
 // Binds the socket to a port
     struct sockaddr_in sin = addr.sockaddr();
     if (::bind(sd_, (struct sockaddr*)&sin, sizeof(sin)) < 0) {
+        throw SystemError();
+    }
+}
+
+void Socket::listen(int backlog) {
+    if (::listen(sd_, backlog)) {
+        throw SystemError();
+    }
+}
+
+void Socket::setsockopt(int level, int option, int value) {
+    if (::setsockopt(sd_, level, option, &value, sizeof(value))) {
         throw SystemError();
     }
 }

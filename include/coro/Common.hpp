@@ -57,6 +57,7 @@
 #include <fcntl.h>
 #endif
 
+#include <iostream>
 #include <memory>
 #include <functional>
 #include <cstdint>
@@ -69,6 +70,7 @@
 #include <algorithm>
 #include <queue>
 #include <vector>
+#include <mutex>
 
 #ifndef CORO_STACK_SIZE
 #define CORO_STACK_SIZE 1048576
@@ -79,6 +81,7 @@ class Coroutine;
 class Channel;
 class Hub;
 class Event;
+class Socket;
 
 template <typename T>
 using Ptr = std::shared_ptr<T>;

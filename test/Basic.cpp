@@ -24,8 +24,6 @@
 #include "coro/Coroutine.hpp"
 #include "coro/Hub.hpp"
 
-#include <iostream>
-
 char* recurse(int foo) {
     if(foo ==0) { return 0; }
     char buf[1024];
