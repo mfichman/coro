@@ -28,9 +28,12 @@
 #define VC_EXTRALEAN
 #define WIN32_LEAN_AND_MEAN
 #include <winsock2.h>
+#include <ws2tcpip.h>
+#include <mswsock.h>
 #include <windows.h>
 #undef ERROR
 #undef Ptr
+#define ssize_t SSIZE_T
 #endif
 
 #ifdef __APPLE__
@@ -66,6 +69,8 @@
 #include <set>
 #include <cassert>
 #include <cerrno>
+#include <cstdio>
+#include <cstdlib>
 #include <string>
 #include <algorithm>
 #include <queue>

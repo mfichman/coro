@@ -43,6 +43,15 @@ private:
     Ptr<Coroutine> coroutine_;
 };
 
+#ifdef _WIN32
+struct Overlapped {
+    OVERLAPPED overlapped;
+    Coroutine* coroutine;
+    DWORD bytes;
+    DWORD error;
+};
+#endif
+
 class Hub {
 // The hub manages all coroutines, events, and I/O.  It runs an event loop that
 // schedules coroutines to run when the events they are waiting on (channel,
@@ -55,7 +64,11 @@ public:
     void quiesce();
     void poll();
     void run();
+#ifdef _WIN32
+    HANDLE handle() const { return handle_; }
+#else
     int handle() const { return handle_; }
+#endif
     std::mutex const& mutex() const { return mutex_; }
 
 private:
@@ -63,7 +76,11 @@ private:
     std::vector<Ptr<Coroutine>> runnable_;
     std::priority_queue<Timeout, std::vector<Timeout>> timeout_;
     int blocked_;
+#ifdef _WIN32
+    HANDLE handle_;
+#else
     int handle_; 
+#endif
     std::mutex mutex_;
 
     void timeoutIs(Timeout const& timeout);

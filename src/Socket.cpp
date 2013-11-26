@@ -62,6 +62,7 @@ struct in_addr SocketAddr::inaddr() const {
     }
     freeaddrinfo(res);
     assert(!"no addresses found");
+    return in;
 }
 
 struct sockaddr_in SocketAddr::sockaddr() const {
@@ -75,10 +76,24 @@ struct sockaddr_in SocketAddr::sockaddr() const {
 
 Socket::Socket(int type, int protocol) : sd_(0) {
 // Creates a new socket; throws a socket exception if creation fails
+    hub(); // Make sure the hub is active
     sd_ = socket(AF_INET, type, protocol);
     if(sd_<0) {
         throw SystemError();
     }
+#ifdef _WIN32
+    if(!CreateIoCompletionPort((HANDLE)sd_, hub()->handle(), 0, 0)) {
+        throw SystemError();
+    }
+#endif
+}
+
+Socket::Socket(int sd, char const* bogus) : sd_(sd) {
+#ifdef _WIN32
+    if(!CreateIoCompletionPort((HANDLE)sd_, hub()->handle(), 0, 0)) {
+        throw SystemError();
+    }
+#endif
 }
 
 void Socket::bind(SocketAddr const& addr) {
@@ -96,14 +111,14 @@ void Socket::listen(int backlog) {
 }
 
 void Socket::setsockopt(int level, int option, int value) {
-    if (::setsockopt(sd_, level, option, &value, sizeof(value))) {
+    if (::setsockopt(sd_, level, option, (char*)&value, sizeof(value))) {
         throw SystemError();
     }
 }
 
 void Socket::close() {
 #ifdef _WIN32
-    ::CloseHandle(sd_);
+    ::closesocket(sd_);
 #else
     ::close(sd_);
 #endif

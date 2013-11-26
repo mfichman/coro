@@ -54,11 +54,11 @@ public:
     void shutdown(int how);
     ssize_t write(char const* buf, size_t buflen, int flags=0);
     ssize_t read(char* buf, size_t buflen, int flags=0);
-    int fileno();
+    int fileno() const;
     void setsockopt(int level, int option, int value);
 
 private:
-    Socket(int sd, char const* bogus) : sd_(sd) {}
+    Socket(int sd, char const* bogus);
 
     int sd_;
 };

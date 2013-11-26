@@ -24,7 +24,7 @@
 namespace coro {
 
 void Hub::poll() {
-// Pool for I/O events.  If there are pending coroutines, then don't block
+// Poll for I/O events.  If there are pending coroutines, then don't block
 // indefinitely -- just check for any ready I/O.  If there are timers, block
 // only until the min timer is ready.
     size_t tasks = runnable_.size()+timeout_.size();

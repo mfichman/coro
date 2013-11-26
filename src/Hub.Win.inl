@@ -20,24 +20,43 @@
  * IN THE SOFTWARE.
  */
 
-#pragma once
-
-#include "coro/Common.hpp"
-
 namespace coro {
 
-class SystemError {
-// Encapsulates an os-level error as an exception.
-public:
-    SystemError(int error);
-    SystemError(std::string const& msg) : error_(0), msg_(msg) {}
-    SystemError();
+void Hub::poll() {
+// Poll For I/O events.  If there are pending coroutines, then don't block
+// indefinitely -- just check for any ready I/O.  If there are timers, block
+// only until the min timer is ready.
+    size_t tasks = runnable_.size()+timeout_.size();
+    DWORD timeout = 0;
+    if (!timeout_.empty() && runnable_.empty()) {
+        auto const diff = timeout_.top().time()-Time::now();
+        if (diff > Time::sec(0)) {
+            timeout = diff.millisec();
+        }
+    }
+    if (tasks <= 0) {
+        timeout = INFINITE;
+    }
 
-    int error() const { return error_; }
-    std::string const& what() const { return msg_; }
-private:
-    int error_;
-    std::string const msg_;
-};
+    SetLastError(ERROR_SUCCESS);
+    ULONG_PTR udata = 0;
+    Overlapped* op = 0;
+    OVERLAPPED** evt = (OVERLAPPED**)&op;
+    DWORD bytes = 0;
+    BOOL ret = GetQueuedCompletionStatus(handle_, (LPDWORD)&bytes, &udata, evt, timeout);
+    if (!op) { return; }
+
+    if (ret) {
+        op->bytes = bytes;
+        op->error = ERROR_SUCCESS;
+    } else {
+        op->bytes = 0;
+        op->error = GetLastError();
+    }
+    auto const coro = (Coroutine*)op->coroutine;
+    assert(coro->status()!=Coroutine::DEAD);
+    runnable_.push_back(coro->shared_from_this());
+    blocked_--;
+}
 
 }

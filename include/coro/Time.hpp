@@ -43,7 +43,10 @@ public:
     Time operator-(Time const& rhs) const { return Time(microsec_ - rhs.microsec_); }
     Time operator+(Time const& rhs) const { return Time(microsec_ + rhs.microsec_); }
 
+#ifdef _WIN32
     struct timespec timespec() const;
+#endif
+    int64_t millisec() const { return microsec_/1000; }
     int64_t microsec() const { return microsec_; }
 private:
     Time(int64_t microsec) : microsec_(microsec) {}

@@ -46,7 +46,7 @@ void run() {
 Hub::Hub() : blocked_(0), handle_(0) {
 // Creates a new hub to manage I/O and runnable coroutines.  The hub is
 // responsible for scheduling coroutines to run.
-#ifdef WINDOWS
+#if defined(_WIN32)
     WORD version = MAKEWORD(2, 2);
     WSADATA data;
     // Disable error dialog boxes
@@ -54,14 +54,15 @@ Hub::Hub() : blocked_(0), handle_(0) {
     if (WSAStartup(version, &data) != 0) {
         abort();
     }
-#endif
-#if defined(_WIN32)
     handle_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 0);
 #elif defined(__APPLE__)
     handle_ = kqueue();
 #elif defined(__linux__)
     handle_ = epoll_create(1);
 #endif
+    if (!handle_) {
+        throw SystemError();
+    }
 }
 
 void Hub::timeoutIs(Timeout const& timeout) {

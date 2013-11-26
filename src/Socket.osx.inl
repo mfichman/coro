@@ -109,10 +109,13 @@ ssize_t Socket::write(char const* buf, size_t len, int flags) {
             throw SystemError();
         } else if (ret == 0) {
             return total;
-        } else if (ret > 0) {
+        } else {
             len -= ret;
             buf += ret;
             total += ret; 
+        }
+        if (len == 0) {
+            return;
         }
         int kqfd = hub()->handle();
         int kqflags = EV_ADD|EV_ONESHOT|EV_EOF;

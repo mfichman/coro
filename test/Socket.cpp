@@ -1,3 +1,4 @@
+#include <coro/Common.hpp>
 #include <coro/Socket.hpp>
 #include <coro/Hub.hpp>
 #include <coro/Error.hpp>

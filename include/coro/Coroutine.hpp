@@ -36,7 +36,11 @@ Ptr<Coroutine> current();
 Ptr<Coroutine> main();
 void yield();
 void sleep(Time const& time);
+#ifdef _WIN32
+LONG WINAPI fault(LPEXCEPTION_POINTERS info);
+#else
 void fault(int signo, siginfo_t* info, void* context);
+#endif
 
 
 class Stack {
@@ -101,7 +105,11 @@ private:
     friend void coro::yield();
     friend void coro::sleep(Time const& time);
     friend void ::coroStart() throw();
+#ifdef _WIN32
+    friend LONG WINAPI coro::fault(LPEXCEPTION_POINTERS info);
+#else
     friend void coro::fault(int signo, siginfo_t* info, void* context);
+#endif
     friend class coro::Hub;
     friend class coro::Socket;
 };
