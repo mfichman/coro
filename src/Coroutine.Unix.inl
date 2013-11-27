@@ -22,6 +22,7 @@
 
 namespace coro {
 
+/*
 static struct sigaction sigsegv;
 static struct sigaction sigbus;
 static char signalstack[SIGSTKSZ];
@@ -47,10 +48,12 @@ void fault(int signo, siginfo_t* info, void* context) {
         coroCurrent->commit(addr);
     }
 }
+*/
 
 void registerSignalHandlers() {
     // Set up the signal handlers for SIGBUS/SIGSEGV to catch stack protection
     // errors and grow the stack when it runs out of space.
+/*
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sigfillset(&sa.sa_mask);
@@ -64,6 +67,7 @@ void registerSignalHandlers() {
     stack.ss_flags = 0;
     stack.ss_size = sizeof(signalstack);
     sigaltstack(&stack, 0);
+*/
 }
 
 }

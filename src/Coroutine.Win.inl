@@ -55,7 +55,7 @@ LONG WINAPI fault(LPEXCEPTION_POINTERS info) {
 
 void registerSignalHandlers() {
     // Set up the signal handlers for SIGBUS/SIGSEGV to catch stack protection
-    AddVectoredExceptionHandler(1, fault);
+    //AddVectoredExceptionHandler(1, fault);
 }
 
 }

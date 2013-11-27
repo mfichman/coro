@@ -61,6 +61,8 @@ Stack::Stack(uint64_t size) : data_(0), size_(size) {
 // coroutine stack is quite small, to lower memory usage.  As the stack grows,
 // the Coroutine::fault handler will commit memory pages for the coroutine.
     if (size == 0) { return; }
+    data_ = (uint8_t*)malloc(size);
+/*
 #ifdef _WIN32
     data_ = (uint8_t*)VirtualAlloc(0, size, MEM_RESERVE, PAGE_READWRITE);
     if (!data_) {
@@ -76,11 +78,14 @@ Stack::Stack(uint64_t size) : data_(0), size_(size) {
         throw std::bad_alloc();
     }
 #endif
+*/
+    assert(data_);
 }
 
 Stack::~Stack() {
 // Throw exception
     if (data_) {
+/*
 #ifdef _WIN32
         VirtualFree((LPVOID)data_, size_, MEM_RELEASE); 
 #else
@@ -88,6 +93,8 @@ Stack::~Stack() {
             throw SystemError();
         } 
 #endif
+*/  
+        free(data_);
     }
 }
 
@@ -113,8 +120,7 @@ void Coroutine::init(std::function<void()> const& func) {
     coro::main();
     func_ = func;
     status_ = Coroutine::NEW;
-    commit((uint64_t)stack_.end()-1); 
-    //commit((uint64_t)stack_.end()-CORO_STACK_SIZE/2); 
+    //commit((uint64_t)stack_.end()-1); 
     // Commit the page at the top of the coroutine stack
 
 #ifdef _WIN32
