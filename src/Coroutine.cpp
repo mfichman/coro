@@ -112,7 +112,7 @@ void Coroutine::init(std::function<void()> const& func) {
     func_ = func;
     status_ = Coroutine::NEW;
     commit((uint64_t)stack_.end()-1); 
-    commit((uint64_t)stack_.end()-CORO_STACK_SIZE/2); 
+    //commit((uint64_t)stack_.end()-CORO_STACK_SIZE/2); 
     // Commit the page at the top of the coroutine stack
 
 #ifdef _WIN32

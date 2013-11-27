@@ -25,7 +25,7 @@
 #include "coro/Hub.hpp"
 
 char* recurse(int foo) {
-    if(foo ==0) { return 0; }
+    if(foo == 0) { return 0; }
     char buf[1024];
     char* buf2 = buf;
     recurse(foo-1);
@@ -33,8 +33,6 @@ char* recurse(int foo) {
 }
 
 void foo() {
-//    recurse(900);
-
     try {
         std::cout << "hello" << std::endl;
         coro::yield();

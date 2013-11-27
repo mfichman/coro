@@ -31,6 +31,7 @@ LONG WINAPI fault(LPEXCEPTION_POINTERS info) {
     // inaccessible address. If this value is 8, the thread causes a user-mode
     // data execution prevention (DEP) violation.  The second array element
     // specifies the virtual address of the inaccessible data.
+    printf("alloc\n");
     uint64_t stackStart = (uint64_t)coroCurrent->stack_.begin();
     uint64_t stackEnd = (uint64_t)coroCurrent->stack_.end();
     uint64_t type = (uint64_t)info->ExceptionRecord->ExceptionInformation[0];
