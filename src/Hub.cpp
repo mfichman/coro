@@ -72,9 +72,11 @@ void Hub::timeoutIs(Timeout const& timeout) {
 
 void Hub::quiesce() {
 // Run coroutines until they are all blocked on I/O or dead.
-    std::vector<Ptr<Coroutine>> runnable;
+    std::vector<WeakPtr<Coroutine>> runnable;
     runnable.swap(runnable_);
-    for (auto coroutine : runnable) {
+    for (auto weak : runnable) {
+        auto coroutine = weak.lock();
+        if (!coroutine) { continue; }
         main()->status_ = Coroutine::SUSPENDED;
         assert(coroutine->status()!=Coroutine::DEAD);
         coroutine->swap();

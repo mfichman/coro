@@ -46,26 +46,27 @@ void foo() {
     std::cout << "one\n" << std::endl;
     coro::sleep(coro::Time::sec(4));
     std::cout << "two\n" << std::endl;
+    exit(0);
 }
 
 void bar() {
     while (true) {
-    coro::sleep(coro::Time::millisec(1000));
-    std::cout << "barrrrrr" << std::endl;
+        coro::sleep(coro::Time::millisec(1000));
+        std::cout << "barrrrrr" << std::endl;
     }
 }
 
 void baz() {
     while (true) {
-    coro::sleep(coro::Time::millisec(100));
-    std::cout << "baz" << std::endl;
+        coro::sleep(coro::Time::millisec(100));
+        std::cout << "baz" << std::endl;
     }
 }
 
 int main() {
-    coro::start(baz);
-    coro::start(bar);
-    coro::start(foo);
+    auto cbaz = coro::start(baz);
+    auto cbar = coro::start(bar);
+    auto cfoo = coro::start(foo);
     coro::run();
     return 0;
 }

@@ -104,6 +104,7 @@ ssize_t Socket::write(char const* buf, size_t len, int flags) {
 // Write asynchronously
     size_t total = 0;
     while (true) {
+        printf("%zd\n", len);
         auto ret = send(sd_, buf, len, flags);
         if (ret < 0 && errno != EAGAIN) {
             throw SystemError();
@@ -115,7 +116,7 @@ ssize_t Socket::write(char const* buf, size_t len, int flags) {
             total += ret; 
         }
         if (len == 0) {
-            return;
+            return total;
         }
         int kqfd = hub()->handle();
         int kqflags = EV_ADD|EV_ONESHOT|EV_EOF;

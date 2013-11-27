@@ -25,6 +25,7 @@
 
 namespace coro {
 
+#ifdef _WIN32
 std::string winErrorMsg(DWORD error) {
     std::string buffer(1024,'0');
     LPSTR buf = (LPSTR)buffer.c_str();
@@ -33,6 +34,7 @@ std::string winErrorMsg(DWORD error) {
     buffer.resize(len);
     return buffer;
 }
+#endif
 
 SystemError::SystemError() : 
 #ifdef _WIN32

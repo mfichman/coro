@@ -13,9 +13,12 @@ void server() {
         ls->listen(10);
 
         auto sd = ls->accept();
-        while (auto len = sd->read(buf, sizeof(buf))) {
-            printf("%*s", (int)len, buf);
+        ssize_t len = 0;
+        while ((len = sd->read(buf, sizeof(buf))) > 0) {
+            printf("%.*s", (int)len, buf);
+            fflush(stdout);
         }
+        printf("exit %zd\n", len);
         exit(0);
     } catch (coro::SystemError const& ex) {
         std::cout << ex.what() << std::endl;
@@ -37,8 +40,8 @@ void client() {
 }
 
 int main() {
-    coro::start(server);
-    coro::start(client);
+    auto cserver = coro::start(server);
+    auto cclient = coro::start(client);
     coro::run();
 
     return 0;

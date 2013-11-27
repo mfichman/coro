@@ -84,7 +84,9 @@ Stack::~Stack() {
 #ifdef _WIN32
         VirtualFree((LPVOID)data_, size_, MEM_RELEASE); 
 #else
-        munmap(data_, size_); 
+        if (munmap(data_, size_)) {
+            throw SystemError();
+        } 
 #endif
     }
 }
@@ -182,6 +184,9 @@ void Coroutine::yield() {
 void Coroutine::block() {
 // Block the current coroutine until some event occurs.  The coroutine will not
 // be rescheduled until explicitly scheduled.
+
+    // Anchor the coroutine, so that it doesn't get GC'ed while blocked on I/O.
+    Ptr<Coroutine> anchor = shared_from_this();
     assert(coroCurrent == this);
     switch (coroCurrent->status_) {
     case Coroutine::RUNNING: coroCurrent->status_ = Coroutine::BLOCKED; break;
@@ -225,8 +230,6 @@ void Coroutine::swap() {
 
 void Coroutine::start() throw() {
 // This function runs the coroutine from the given entry point.
-    Ptr<Coroutine> anchor = current();
-    // Coroutine cannot be destroyed until last reference is gone
     try {
         func_();
         exit(); // Fell off the end of the coroutine function

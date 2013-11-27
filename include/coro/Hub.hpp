@@ -31,6 +31,8 @@ Ptr<Hub> hub();
 void run();
 
 class Timeout {
+// Record to track when a coroutine should be scheduled in the future.  When
+// the time elapses, the coroutine is resumed.
 public:
     Timeout(Time const& time, Ptr<Coroutine> coro) : time_(time), coroutine_(coro) {}
     bool operator<(Timeout const& rhs) const { return time_ > rhs.time_; }
@@ -58,8 +60,10 @@ class Hub {
 // I/O, etc.) have signaled.
 public:
     template <typename F>
-    void start(F func) { 
-        runnable_.push_back(Ptr<Coroutine>(new Coroutine(func)));
+    Ptr<Coroutine> start(F func) { 
+        Ptr<Coroutine> coro(new Coroutine(func));
+        runnable_.push_back(coro);
+        return coro;
     }
     void quiesce();
     void poll();
@@ -73,7 +77,7 @@ public:
 
 private:
     Hub();
-    std::vector<Ptr<Coroutine>> runnable_;
+    std::vector<WeakPtr<Coroutine>> runnable_;
     std::priority_queue<Timeout, std::vector<Timeout>> timeout_;
     int blocked_;
 #ifdef _WIN32
@@ -88,11 +92,12 @@ private:
     friend Ptr<Hub> coro::hub();
     friend void coro::sleep(Time const& time);
     friend class Coroutine;
+    friend class Event;
 };
 
 template <typename F>
-void start(F func) {
-    hub()->start(func);
+Ptr<Coroutine> start(F func) {
+    return hub()->start(func);
 }
 
 }
