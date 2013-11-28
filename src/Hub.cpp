@@ -100,9 +100,6 @@ void Hub::run() {
 // Run coroutines and handle I/O until the process exits
     assert(coro::current() == coro::main());
     while (true) {
-        quiesce();
-        poll();
-
         auto const now = Time::now();
         while (!timeout_.empty() && timeout_.top().time() <= now) {
             auto const timeout = timeout_.top();
@@ -111,6 +108,8 @@ void Hub::run() {
             runnable_.push_back(coro);
             timeout_.pop();
         }
+        quiesce();
+        poll();
     }
 }
 

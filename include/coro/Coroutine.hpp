@@ -112,6 +112,7 @@ private:
 #endif
     friend class coro::Hub;
     friend class coro::Socket;
+    friend class coro::Event;
 };
 
 }
