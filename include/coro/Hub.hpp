@@ -100,4 +100,15 @@ Ptr<Coroutine> start(F func) {
     return hub()->start(func);
 }
 
+template <typename F>
+Ptr<Coroutine> timer(F func, Time const& time) {
+    return start([=] { 
+        std::function<void()> f = func;
+        while (true) {
+            f();
+            coro::sleep(time); 
+        }
+    });
+}
+
 }
