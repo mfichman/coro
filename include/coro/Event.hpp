@@ -44,7 +44,7 @@ public:
     }
 
 private:
-    std::vector<WeakPtr<Coroutine>> waiter_;
+    std::vector<Ptr<Coroutine>> waiter_;
 };
 
 }

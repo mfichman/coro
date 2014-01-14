@@ -93,6 +93,7 @@ private:
     void swap(); // Passes control to this coroutine
     void yield(); 
     void block(); 
+    void unblock();
     bool isMain() { return !stack_.begin(); }
 
     uint8_t* stackPointer_; // This field must be the first field in the coroutine

@@ -27,18 +27,16 @@
 namespace coro {
 
 void Event::notifyAll() {
-    std::vector<WeakPtr<Coroutine>> waiter;
+    std::vector<Ptr<Coroutine>> waiter;
     waiter.swap(waiter_);
     for (auto coro : waiter) {
-        hub()->blocked_--;
-        hub()->runnable_.push_back(coro); 
+        coro->unblock();
     }
     assert(waiter_.size()==0);
 }
 
 void Event::wait() {
     waiter_.push_back(current());
-    hub()->blocked_++;
     current()->block();
 }
 

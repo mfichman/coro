@@ -47,9 +47,7 @@ void Hub::poll() {
     } else {
         auto const coro = (Coroutine*)event.udata;
         assert(coro->status()!=Coroutine::DEAD);
-        coro->status_ = Coroutine::SUSPENDED;
-        runnable_.push_back(coro->shared_from_this());
-        blocked_--;
+        coro->unblock();
     }
 }
 

@@ -24,14 +24,6 @@
 #include "coro/Coroutine.hpp"
 #include "coro/Hub.hpp"
 
-char* recurse(int foo) {
-    if(foo == 0) { return 0; }
-    char buf[1024];
-    char* buf2 = buf;
-    recurse(foo-1);
-    return buf2;
-}
-
 void foo() {
     try {
         std::cout << "hello" << std::endl;
@@ -42,22 +34,21 @@ void foo() {
     }
     std::cout << "hello" << std::endl;
 
-    coro::sleep(coro::Time::sec(4));
-    std::cout << "one\n" << std::endl;
-    coro::sleep(coro::Time::sec(4));
-    std::cout << "two\n" << std::endl;
-    exit(0);
+    coro::sleep(coro::Time::sec(.4));
+    std::cout << "one" << std::endl;
+    coro::sleep(coro::Time::sec(.4));
+    std::cout << "two" << std::endl;
 }
 
 void bar() {
-    while (true) {
+    for (auto i = 0; i < 2; ++i) {
         coro::sleep(coro::Time::millisec(1000));
         std::cout << "barrrrrr" << std::endl;
     }
 }
 
 void baz() {
-    while (true) {
+    for (auto i = 0; i < 20; ++i) {
         coro::sleep(coro::Time::millisec(100));
         std::cout << "baz" << std::endl;
     }

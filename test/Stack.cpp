@@ -17,7 +17,7 @@ int main() {
     // Check that coroutines do not use too much stack mem
     std::vector<Ptr<Coroutine>> coros;
 
-    for (auto i = 0; i < 1000; ++i) {
+    for (auto i = 0; i < 10; ++i) {
         for (auto i = 0; i < 1000; ++i) {
             coros.push_back(coro::start(std::bind(recurse, 100)));
         }

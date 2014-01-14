@@ -55,8 +55,7 @@ void Hub::poll() {
     }
     auto const coro = (Coroutine*)op->coroutine;
     assert(coro->status()!=Coroutine::DEAD);
-    runnable_.push_back(coro->shared_from_this());
-    blocked_--;
+    coro->unblock();
 }
 
 }

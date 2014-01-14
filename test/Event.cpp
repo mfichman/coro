@@ -16,8 +16,6 @@ int main() {
         printf("waiting\n");
         event.wait([&]() { return trigger; }); 
         printf("done\n");
-        exit(0);
-
     });
 
     coro::run();

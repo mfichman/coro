@@ -18,8 +18,7 @@ void server() {
             printf("%.*s", (int)len, buf);
             fflush(stdout);
         }
-        printf("exit %zd\n", len);
-        exit(0);
+        std::cout << "exit" << std::endl;
     } catch (coro::SystemError const& ex) {
         std::cout << ex.what() << std::endl;
         exit(1);

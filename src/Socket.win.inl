@@ -149,6 +149,7 @@ ssize_t Socket::read(char* buf, size_t len, int flags) {
     op.coroutine = current().get();
     OVERLAPPED* evt = &op.overlapped;
     DWORD flg = flags;
+
     if(WSARecv(sd_, &wsabuf, 1, NULL, &flg, evt, NULL)) {
         if (ERROR_IO_PENDING != GetLastError()) {
             throw SystemError();

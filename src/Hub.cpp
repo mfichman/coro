@@ -87,7 +87,6 @@ void Hub::quiesce() {
             runnable_.push_back(coroutine);
             break;  
         case Coroutine::BLOCKED:
-            blocked_++;
             break;
         case Coroutine::NEW: // fallthrough
         case Coroutine::RUNNING: // fallthrough
@@ -104,11 +103,13 @@ void Hub::run() {
         while (!timeout_.empty() && timeout_.top().time() <= now) {
             auto const timeout = timeout_.top();
             auto const coro = timeout.coroutine();
-            coro->status_ = Coroutine::SUSPENDED;
-            runnable_.push_back(coro);
+            coro->unblock();
             timeout_.pop();
         }
         quiesce();
+        if (runnable_.size()+blocked_ <= 0) {
+            return; // No more work to be done.
+        }
         poll();
     }
 }

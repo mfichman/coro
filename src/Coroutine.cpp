@@ -194,8 +194,8 @@ void Coroutine::block() {
     // Anchor the coroutine, so that it doesn't get GC'ed while blocked on I/O.
     Ptr<Coroutine> anchor = shared_from_this();
     assert(coroCurrent == this);
-    switch (coroCurrent->status_) {
-    case Coroutine::RUNNING: coroCurrent->status_ = Coroutine::BLOCKED; break;
+    switch (status_) {
+    case Coroutine::RUNNING: status_ = Coroutine::BLOCKED; break;
     case Coroutine::DEAD: break;
     case Coroutine::DELETED: break; // fallthrough
     case Coroutine::SUSPENDED: // fallthrough
@@ -203,7 +203,23 @@ void Coroutine::block() {
     case Coroutine::NEW: // fallthrough
     default: assert(!"illegal state"); break;
     }
+    hub()->blocked_++;
     main()->swap();
+}
+
+void Coroutine::unblock() {
+// Unblock the coroutine when an event occurs.
+    switch (status_) {
+    case Coroutine::BLOCKED: status_ = Coroutine::SUSPENDED; break;
+    case Coroutine::RUNNING: // fallthrough
+    case Coroutine::DEAD: // fallthrough
+    case Coroutine::DELETED: // fallthrough
+    case Coroutine::SUSPENDED: // fallthrough
+    case Coroutine::NEW: // fallthrough
+    default: assert(!"illegal state"); break;
+    }
+    hub()->blocked_--;
+    hub()->runnable_.push_back(shared_from_this());
 }
 
 void Coroutine::swap() {
