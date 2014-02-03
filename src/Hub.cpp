@@ -43,7 +43,7 @@ void run() {
     hub()->run();
 }
 
-Hub::Hub() : blocked_(0), handle_(0) {
+Hub::Hub() : blocked_(0), waiting_(0), handle_(0) {
 // Creates a new hub to manage I/O and runnable coroutines.  The hub is
 // responsible for scheduling coroutines to run.
 #if defined(_WIN32)
@@ -77,16 +77,17 @@ void Hub::quiesce() {
     for (auto weak : runnable) {
         auto coroutine = weak.lock();
         if (!coroutine) { continue; }
-        main()->status_ = Coroutine::SUSPENDED;
+        main()->status_ = Coroutine::RUNNABLE;
         assert(coroutine->status()!=Coroutine::DEAD);
         coroutine->swap();
         switch (coroutine->status()) {
         case Coroutine::DEAD: break;
         case Coroutine::DELETED: break;
-        case Coroutine::SUSPENDED:
+        case Coroutine::RUNNABLE:
             runnable_.push_back(coroutine);
             break;  
         case Coroutine::BLOCKED:
+        case Coroutine::WAITING:
             break;
         case Coroutine::NEW: // fallthrough
         case Coroutine::RUNNING: // fallthrough
@@ -103,11 +104,11 @@ void Hub::run() {
         while (!timeout_.empty() && timeout_.top().time() <= now) {
             auto const timeout = timeout_.top();
             auto const coro = timeout.coroutine();
-            coro->unblock();
+            coro->notify();
             timeout_.pop();
         }
         quiesce();
-        if (runnable_.size()+blocked_ <= 0) {
+        if (runnable_.size()+blocked_+waiting_ <= 0) {
             return; // No more work to be done.
         }
         poll();

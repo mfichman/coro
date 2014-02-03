@@ -30,14 +30,14 @@ void Event::notifyAll() {
     std::vector<Ptr<Coroutine>> waiter;
     waiter.swap(waiter_);
     for (auto coro : waiter) {
-        coro->unblock();
+        coro->notify();
     }
     assert(waiter_.size()==0);
 }
 
 void Event::wait() {
     waiter_.push_back(current());
-    current()->block();
+    current()->wait();
 }
 
 }

@@ -80,6 +80,7 @@ private:
     std::vector<WeakPtr<Coroutine>> runnable_;
     std::priority_queue<Timeout, std::vector<Timeout>> timeout_;
     int blocked_;
+    int waiting_;
 #ifdef _WIN32
     HANDLE handle_;
 #else

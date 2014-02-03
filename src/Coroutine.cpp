@@ -110,6 +110,7 @@ Coroutine::~Coroutine() {
         // This is the main coroutine; don't free up anything, because we did
         // not allocate a stack for it.
     } else if (status_ != Coroutine::DEAD && status_ != Coroutine::NEW) {
+        assert(status_ != Coroutine::BLOCKED);
         status_ = Coroutine::DELETED;
         swap(); // Allow the coroutine to clean up its stack
     }
@@ -176,10 +177,10 @@ void Coroutine::yield() {
 // coroutine to run.
     assert(coroCurrent == this);
     switch (coroCurrent->status_) {
-    case Coroutine::RUNNING: coroCurrent->status_ = Coroutine::SUSPENDED; break;
+    case Coroutine::RUNNING: coroCurrent->status_ = Coroutine::RUNNABLE; break;
     case Coroutine::DEAD: break;
     case Coroutine::DELETED: break; // fallthrough
-    case Coroutine::SUSPENDED: // fallthrough
+    case Coroutine::RUNNABLE: // fallthrough
     case Coroutine::BLOCKED: // fallthrough
     case Coroutine::NEW: // fallthrough
     default: assert(!"illegal state"); break;
@@ -188,8 +189,8 @@ void Coroutine::yield() {
 }
 
 void Coroutine::block() {
-// Block the current coroutine until some event occurs.  The coroutine will not
-// be rescheduled until explicitly scheduled.
+// Block the current coroutine until some I/O event occurs.  The coroutine will
+// not be rescheduled until explicitly scheduled.
 
     // Anchor the coroutine, so that it doesn't get GC'ed while blocked on I/O.
     Ptr<Coroutine> anchor = shared_from_this();
@@ -198,7 +199,7 @@ void Coroutine::block() {
     case Coroutine::RUNNING: status_ = Coroutine::BLOCKED; break;
     case Coroutine::DEAD: break;
     case Coroutine::DELETED: break; // fallthrough
-    case Coroutine::SUSPENDED: // fallthrough
+    case Coroutine::RUNNABLE: // fallthrough
     case Coroutine::BLOCKED: // fallthrough
     case Coroutine::NEW: // fallthrough
     default: assert(!"illegal state"); break;
@@ -210,15 +211,52 @@ void Coroutine::block() {
 void Coroutine::unblock() {
 // Unblock the coroutine when an event occurs.
     switch (status_) {
-    case Coroutine::BLOCKED: status_ = Coroutine::SUSPENDED; break;
+    case Coroutine::BLOCKED: status_ = Coroutine::RUNNABLE; break;
     case Coroutine::RUNNING: // fallthrough
     case Coroutine::DEAD: // fallthrough
     case Coroutine::DELETED: // fallthrough
-    case Coroutine::SUSPENDED: // fallthrough
+    case Coroutine::RUNNABLE: // fallthrough
     case Coroutine::NEW: // fallthrough
     default: assert(!"illegal state"); break;
     }
     hub()->blocked_--;
+    hub()->runnable_.push_back(shared_from_this());
+}
+
+void Coroutine::wait() {
+// Block the current coroutine until some event occurs.  The coroutine will not
+// be rescheduled until explicitly scheduled.
+
+    // Anchor the coroutine, so that it doesn't get GC'ed while waiting.
+    // FixMe: Should this be the case?  Maybe a waiting coroutine should be
+    // collected.
+    Ptr<Coroutine> anchor = shared_from_this();
+    assert(coroCurrent == this);
+    switch (status_) {
+    case Coroutine::RUNNING: status_ = Coroutine::WAITING; break;
+    case Coroutine::DEAD: break;
+    case Coroutine::DELETED: break; // fallthrough
+    case Coroutine::RUNNABLE: // fallthrough
+    case Coroutine::BLOCKED: // fallthrough
+    case Coroutine::NEW: // fallthrough
+    default: assert(!"illegal state"); break;
+    }
+    hub()->waiting_++;
+    main()->swap();
+}
+
+void Coroutine::notify() {
+// Unblock the coroutine when an event occurs.
+    switch (status_) {
+    case Coroutine::WAITING: status_ = Coroutine::RUNNABLE; break;
+    case Coroutine::RUNNING: // fallthrough
+    case Coroutine::DEAD: // fallthrough
+    case Coroutine::DELETED: // fallthrough
+    case Coroutine::RUNNABLE: // fallthrough
+    case Coroutine::NEW: // fallthrough
+    default: assert(!"illegal state"); break;
+    }
+    hub()->waiting_--;
     hub()->runnable_.push_back(shared_from_this());
 }
 
@@ -230,7 +268,7 @@ void Coroutine::swap() {
     Coroutine* current = coroCurrent;
     switch (status_) {
     case Coroutine::DELETED: break;
-    case Coroutine::SUSPENDED: status_ = Coroutine::RUNNING; break;
+    case Coroutine::RUNNABLE: status_ = Coroutine::RUNNING; break;
     case Coroutine::NEW: status_ = Coroutine::RUNNING; break;
     case Coroutine::BLOCKED: status_ = Coroutine::RUNNING; break;
     case Coroutine::RUNNING: return; // already running
@@ -242,7 +280,7 @@ void Coroutine::swap() {
     switch (coroCurrent->status_) {
     case Coroutine::DELETED: if (!coroCurrent->isMain()) { throw ExitException(); } break;
     case Coroutine::RUNNING: break; 
-    case Coroutine::SUSPENDED: // fallthrough
+    case Coroutine::RUNNABLE: // fallthrough
     case Coroutine::BLOCKED: // fallthrough
     case Coroutine::NEW: // fallthrough
     case Coroutine::DEAD: // fallthrough
@@ -270,7 +308,7 @@ void Coroutine::exit() {
     case Coroutine::DELETED: break;
     case Coroutine::RUNNING: status_ = Coroutine::DEAD; break;
     case Coroutine::DEAD: // fallthrough
-    case Coroutine::SUSPENDED: // fallthrough
+    case Coroutine::RUNNABLE: // fallthrough
     case Coroutine::NEW: // fallthrough
     default: assert(!"illegal state"); break;
     }
@@ -326,7 +364,7 @@ void yield() {
 
 void sleep(Time const& time) {
     hub()->timeoutIs(Timeout(Time::now()+time, current()));
-    current()->block();
+    current()->wait();
 }
 
 

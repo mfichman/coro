@@ -37,16 +37,16 @@ void Hub::poll() {
     if (tasks <= 0) {
         timeout = INFINITE;
     }
-
+    if (timeout == 0 && blocked_ == 0) {
+        return;
+    }
     SetLastError(ERROR_SUCCESS);
     ULONG_PTR udata = 0;
     Overlapped* op = 0;
     OVERLAPPED** evt = (OVERLAPPED**)&op;
     DWORD bytes = 0;
-    std::cout << "timeout=" << timeout << std::endl; 
     BOOL ret = GetQueuedCompletionStatus(handle_, (LPDWORD)&bytes, &udata, evt, timeout);
     if (!op) { return; }
-
     if (ret) {
         op->bytes = bytes;
         op->error = ERROR_SUCCESS;

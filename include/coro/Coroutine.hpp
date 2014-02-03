@@ -76,7 +76,7 @@ class Coroutine : public std::enable_shared_from_this<Coroutine> {
 // A coroutine, or lightweight cooperative thread.  A coroutine runs a function
 // that is allowed to suspend and resume at any point during its execution.
 public:
-    enum Status { NEW, RUNNING, SUSPENDED, BLOCKED, DEAD, DELETED };
+    enum Status { NEW, RUNNING, RUNNABLE, BLOCKED, WAITING, DEAD, DELETED };
 
     ~Coroutine();
 
@@ -94,6 +94,8 @@ private:
     void yield(); 
     void block(); 
     void unblock();
+    void wait(); // Enter WAITING state
+    void notify(); // Exit WAITING state
     bool isMain() { return !stack_.begin(); }
 
     uint8_t* stackPointer_; // This field must be the first field in the coroutine
