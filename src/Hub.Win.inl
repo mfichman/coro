@@ -43,6 +43,7 @@ void Hub::poll() {
     Overlapped* op = 0;
     OVERLAPPED** evt = (OVERLAPPED**)&op;
     DWORD bytes = 0;
+    std::cout << "timeout=" << timeout << std::endl; 
     BOOL ret = GetQueuedCompletionStatus(handle_, (LPDWORD)&bytes, &udata, evt, timeout);
     if (!op) { return; }
 

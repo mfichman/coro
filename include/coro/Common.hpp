@@ -78,7 +78,8 @@
 #include <mutex>
 
 #ifndef CORO_STACK_SIZE
-#define CORO_STACK_SIZE 1048576
+//#define CORO_STACK_SIZE 1048576
+#define CORO_STACK_SIZE 102400
 #endif
 
 namespace coro {
