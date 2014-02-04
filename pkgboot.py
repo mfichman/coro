@@ -23,7 +23,8 @@ def build_pch(target, source, env):
         args = (
             str(env['CXX']),
             str(env['CXXFLAGS']),
-            '-x'
+            ' '.join('-I%s' % path for path in env['CPPPATH']), 
+            '-x',
             'c++-header',
             str(source[0]),
             '-o',
@@ -114,6 +115,12 @@ class Package:
 
     def _setup_win(self):
         # Set up Windows-specific options
+        if self.build_mode == 'debug':
+            self.env.Append(CXXFLAGS='/O0')
+        elif self.build_mode == 'release':
+            self.env.Append(CXXFLAGS='/O2')
+        else:
+            assert not "Unknown build type"
         self.env.Append(CXXFLAGS='/MT /EHsc /Zi /Gm /FS')
         self.env.Append(CXXFLAGS='/Fpbuild/Common.pch')
         self.env.Append(CXXFLAGS='/Yu%s' % self.pch)
@@ -144,6 +151,13 @@ class Package:
 
     def _setup_unix(self):
         # Set up OS X/Linux-specific options
+        if self.build_mode == 'debug':
+            self.env.Append(CXXFLAGS='-O0')
+        elif self.build_mode == 'release':
+            self.env.Append(CXXFLAGS='-O2')
+        else:
+            assert not "Unknown build type"
+
         self.env['CXX'] = 'clang++'
         self.env.Append(CXXFLAGS='-std=c++11 -stdlib=libc++ -g -Wall -Werror -fPIC')
         for framework in self.frameworks:
