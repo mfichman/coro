@@ -363,7 +363,7 @@ void yield() {
 }
 
 void sleep(Time const& time) {
-    hub()->timeoutIs(Timeout(Time::now()+time, current()));
+    hub()->timeoutIs(Timeout(time, current()));
     current()->wait();
 }
 

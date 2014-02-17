@@ -63,11 +63,12 @@ Hub::Hub() : blocked_(0), waiting_(0), handle_(0) {
     if (!handle_) {
         throw SystemError();
     }
+    now_ = Time::now();
 }
 
 void Hub::timeoutIs(Timeout const& timeout) {
 // Schedules a coroutine to run in the future
-    timeout_.push(timeout);
+    timeout_.push(Timeout(timeout.time()+now_, timeout.coroutine()));
 }
 
 void Hub::quiesce() {
@@ -100,8 +101,8 @@ void Hub::run() {
 // Run coroutines and handle I/O until the process exits
     assert(coro::current() == coro::main());
     while (true) {
-        auto const now = Time::now();
-        while (!timeout_.empty() && timeout_.top().time() <= now) {
+        now_ = Time::now();
+        while (!timeout_.empty() && timeout_.top().time() <= now_) {
             auto const timeout = timeout_.top();
             auto const coro = timeout.coroutine();
             coro->notify();

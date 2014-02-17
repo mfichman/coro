@@ -87,6 +87,7 @@ private:
     int handle_; 
 #endif
     std::mutex mutex_;
+    Time now_;
 
     void timeoutIs(Timeout const& timeout);
 
