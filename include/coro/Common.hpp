@@ -78,15 +78,16 @@
 #include <mutex>
 
 #ifndef CORO_STACK_SIZE
-//#define CORO_STACK_SIZE 1048576
-#define CORO_STACK_SIZE 102400
+#define CORO_STACK_SIZE 1048576
+//#define CORO_STACK_SIZE 102400
 #endif
 
 namespace coro {
 class Coroutine;
 class Channel;
-class Hub;
 class Event;
+class Hub;
+class Selector;
 class Socket;
 
 template <typename T>

@@ -249,10 +249,10 @@ void Coroutine::notify() {
 // Unblock the coroutine when an event occurs.
     switch (status_) {
     case Coroutine::WAITING: status_ = Coroutine::RUNNABLE; break;
+    case Coroutine::RUNNABLE: return;
     case Coroutine::RUNNING: // fallthrough
     case Coroutine::DEAD: // fallthrough
     case Coroutine::DELETED: // fallthrough
-    case Coroutine::RUNNABLE: // fallthrough
     case Coroutine::NEW: // fallthrough
     default: assert(!"illegal state"); break;
     }

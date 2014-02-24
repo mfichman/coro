@@ -116,6 +116,7 @@ private:
     friend class coro::Hub;
     friend class coro::Socket;
     friend class coro::Event;
+    friend class coro::Selector;
 };
 
 }

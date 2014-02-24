@@ -26,6 +26,16 @@
 
 namespace coro {
 
+class EventRecord {
+public:
+    EventRecord(Ptr<Coroutine> coro);
+    EventRecord();
+    Ptr<Coroutine> coroutine() const { return coroutine_; }
+
+private:
+    Ptr<Coroutine> coroutine_;
+};
+
 class Event {
 // An event is a coroutine synchronization primitive.  A coroutine that waits
 // on an event is put to sleep until another coroutine wakes it via the notify
@@ -33,6 +43,7 @@ class Event {
 // efficiently wait for a condition to become true -- thus enabling it to be
 // used for triggers, etc.
 public:
+    virtual ~Event() {}
     void notifyAll(); // Notify all coroutines (add them to the runnable list)
     void wait(); // Add a coroutine to the wait set
     
@@ -44,7 +55,13 @@ public:
     }
 
 private:
-    std::vector<Ptr<Coroutine>> waiter_;
+    int waiters() const { return waiter_.size(); }
+    int waitToken(Ptr<Coroutine> waiter);
+    bool waitTokenValid(Ptr<Coroutine> waiter, int token);
+    void waitTokenDel(int token);
+
+    std::vector<EventRecord> waiter_;
+    friend class Selector;
 };
 
 }
