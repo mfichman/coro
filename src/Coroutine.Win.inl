@@ -23,36 +23,6 @@
 
 namespace coro {
 
-LONG WINAPI fault(LPEXCEPTION_POINTERS info) {
-    // From MSDN: The first element of the array contains a read-write flag
-    // that indicates the type of operation that caused the access violation.
-    // If this value is zero, the thread attempted to read the inaccessible
-    // data. If this value is 1, the thread attempted to write to an
-    // inaccessible address. If this value is 8, the thread causes a user-mode
-    // data execution prevention (DEP) violation.  The second array element
-    // specifies the virtual address of the inaccessible data.
-    printf("alloc\n");
-    uint64_t stackStart = (uint64_t)coroCurrent->stack_.begin();
-    uint64_t stackEnd = (uint64_t)coroCurrent->stack_.end();
-    uint64_t type = (uint64_t)info->ExceptionRecord->ExceptionInformation[0];
-    uint64_t addr = (uint64_t)info->ExceptionRecord->ExceptionInformation[1];
-	DWORD code = info->ExceptionRecord->ExceptionCode;
-    if (type != 0 && type != 1) {
-        return EXCEPTION_CONTINUE_SEARCH;
-    } else if (coroCurrent == main().get()) {
-        return EXCEPTION_CONTINUE_SEARCH;
-    } else if (addr < stackStart || addr >= stackEnd) {
-        return EXCEPTION_CONTINUE_SEARCH;
-    } else if (code == EXCEPTION_ACCESS_VIOLATION) {
-        coroCurrent->commit(addr);
-        return EXCEPTION_CONTINUE_EXECUTION;
-    } else if (code == STATUS_GUARD_PAGE_VIOLATION) {
-        coroCurrent->commit(addr);
-        return EXCEPTION_CONTINUE_EXECUTION;
-    }
-    return EXCEPTION_CONTINUE_SEARCH;
-}
-
 void registerSignalHandlers() {
     // Set up the signal handlers for SIGBUS/SIGSEGV to catch stack protection
     //AddVectoredExceptionHandler(1, fault);

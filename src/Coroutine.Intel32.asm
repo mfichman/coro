@@ -54,8 +54,24 @@ coroSwapContext PROC ; (from, to)
     push edx
     push esi
     push edi
+
+    assume fs:nothing
+    push dword ptr fs:[0]
+    push dword ptr fs:[4]
+    push dword ptr fs:[8]
+    assume fs:error
+    ; Save structured exception handling chain
+
     mov [ecx+8], esp ; Save the sp for 'from'
     mov esp, [eax+8] ; Restore the sp for 'to'
+
+    assume fs:nothing
+    pop dword ptr fs:[8]
+    pop dword ptr fs:[4]
+    pop dword ptr fs:[0]
+    assume fs:error
+    ; Restore structured exception handling chain
+
     pop edi
     pop esi
     pop edx

@@ -143,7 +143,7 @@ Ptr<Socket> Socket::accept() {
 }
 
 ssize_t Socket::read(char* buf, size_t len, int flags) {
-// Read from the socket asynchronously
+// Read from the socket asynchronously.  Returns the # of bytes read.
     WSABUF wsabuf = { len, buf };
     Overlapped op{0};
     op.coroutine = current().get();
@@ -159,38 +159,28 @@ ssize_t Socket::read(char* buf, size_t len, int flags) {
     if (ERROR_SUCCESS != op.error) {
         throw SystemError(op.error);
     }
+    assert(op.bytes >= 0);
     return op.bytes;
 }
 
 ssize_t Socket::write(char const* buf, size_t len, int flags) {
-    // Write the entire buffer given by 'buf', and return the bytes written.
-    size_t total = 0;
-    while (len > 0) {
-        WSABUF wsabuf = { len, (LPSTR)buf };
-        Overlapped op{0};
-        op.coroutine = current().get();
-        OVERLAPPED* evt = &op.overlapped;
-        if(WSASend(sd_, &wsabuf, 1, NULL, flags, evt, NULL)) {
-            if (ERROR_IO_PENDING != GetLastError()) {
-                throw SystemError();
-            } 
-        }
-        current()->block();
-        if (ERROR_SUCCESS != op.error) {
-            throw SystemError(op.error);
-        }
-        if (op.bytes == 0) {
-            return total;
-        } else if (op.bytes < 0) {
-            assert(false);
-            return 0;
-        } else {
-            len -= op.bytes;
-            buf += op.bytes;
-            total += op.bytes;
-        }
+// Write to the socket asynchronously.  Returns the # of bytes written.
+    WSABUF wsabuf = { len, (LPSTR)buf };
+    Overlapped op{0};
+    op.coroutine = current().get();
+    OVERLAPPED* evt = &op.overlapped;
+
+    if(WSASend(sd_, &wsabuf, 1, NULL, flags, evt, NULL)) {
+        if (ERROR_IO_PENDING != GetLastError()) {
+            throw SystemError();
+        } 
     }
-    return total;
+    current()->block();
+    if (ERROR_SUCCESS != op.error) {
+        throw SystemError(op.error);
+    }
+    assert(op.bytes >= 0);
+    return op.bytes;
 }
 
 }

@@ -62,38 +62,12 @@ Stack::Stack(uint64_t size) : data_(0), size_(size) {
 // the Coroutine::fault handler will commit memory pages for the coroutine.
     if (size == 0) { return; }
     data_ = (uint8_t*)malloc(size);
-/*
-#ifdef _WIN32
-    data_ = (uint8_t*)VirtualAlloc(0, size, MEM_RESERVE, PAGE_READWRITE);
-    if (!data_) {
-        throw std::bad_alloc();
-    }
-#else
-#ifdef __linux__
-    data_ = (uint8_t*)mmap(0, size, PROT_NONE, MAP_ANONYMOUS|MAP_PRIVATE, -1, 0);
-#else
-    data_ = (uint8_t*)mmap(0, size, PROT_NONE, MAP_ANON|MAP_PRIVATE, -1, 0);
-#endif
-    if (data_ == MAP_FAILED) {
-        throw std::bad_alloc();
-    }
-#endif
-*/
     assert(data_);
 }
 
 Stack::~Stack() {
 // Throw exception
     if (data_) {
-/*
-#ifdef _WIN32
-        VirtualFree((LPVOID)data_, size_, MEM_RELEASE); 
-#else
-        if (munmap(data_, size_)) {
-            throw SystemError();
-        } 
-#endif
-*/  
         free(data_);
     }
 }
@@ -121,8 +95,6 @@ void Coroutine::init(std::function<void()> const& func) {
     coro::main();
     func_ = func;
     status_ = Coroutine::NEW;
-    //commit((uint64_t)stack_.end()-1); 
-    // Commit the page at the top of the coroutine stack
 
 #ifdef _WIN32
     assert((((uint8_t*)this)+8)==(uint8_t*)&stackPointer_);
@@ -132,6 +104,9 @@ void Coroutine::init(std::function<void()> const& func) {
 
 #ifdef _WIN32
     struct StackFrame {
+        void* fs8;
+        void* fs4;
+        void* fs0;
         void* rdi;
         void* rsi;
         void* rdx;
@@ -165,6 +140,12 @@ void Coroutine::init(std::function<void()> const& func) {
 
     StackFrame frame;
     memset(&frame, 0, sizeof(frame));
+#ifdef _WIN32
+    frame.fs0 = (void*)0xffffffff; // Root-level SEH handler
+    frame.fs4 = stack_.end();// Top of stack
+    frame.fs8 = stack_.begin(); // Bottom of stack
+    // See: http://stackoverflow.com/questions/9249576/seh-setup-for-fibers-with-exception-chain-validation-sehop-active
+#endif
     frame.returnAddr = (void*)coroStart;
 
     stackPointer_ = stack_.end();
@@ -314,33 +295,6 @@ void Coroutine::exit() {
     }
     main()->swap();
     assert(!"error: coroutine is dead");
-}
-
-void Coroutine::commit(uint64_t addr) {
-// Ensures that 'addr' is allocated, and that the next page in the stack is a
-// guard page.
-    uint64_t psize = pageSize();
-    uint64_t page = pageRound(addr, psize);
-    uint64_t len = (uint64_t)stack_.end()-page;
-    // Allocate all pages between stack_min and the current page.
-#ifdef _WIN32
-    uint64_t glen = psize;
-    uint64_t guard = page-glen;
-    assert(page < (uint64_t)stack_.end());
-    if (!VirtualAlloc((LPVOID)page, len, MEM_COMMIT, PAGE_READWRITE)) {
-        abort();     
-    }
-    // Create a guard page right after the current page.
-    if (!VirtualAlloc((LPVOID)guard, glen, MEM_COMMIT, PAGE_READWRITE|PAGE_GUARD)) {
-        abort();     
-    }
-#else
-    assert(page < (uint64_t)stack_.end());
-    assert(page >= (uint64_t)stack_.begin());
-    if (mprotect((void*)page, len, PROT_READ|PROT_WRITE) == -1) {
-        abort();
-    }
-#endif
 }
 
 Ptr<Coroutine> current() {

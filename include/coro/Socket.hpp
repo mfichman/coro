@@ -37,6 +37,11 @@ public:
     short const port;
 };
 
+class SocketCloseException {
+public:
+    SocketCloseException() {}
+};
+
 class Socket {
 // Emulates Berkeley sockets using yields to block the coroutine when I/O
 // operations cannot complete right away.  Actually, this class is more like
@@ -52,8 +57,10 @@ public:
     void connect(SocketAddr const& addr);
     void listen(int backlog);
     void shutdown(int how);
-    ssize_t write(char const* buf, size_t buflen, int flags=0);
-    ssize_t read(char* buf, size_t buflen, int flags=0);
+    ssize_t write(char const* buf, size_t len, int flags=0);
+    ssize_t read(char* buf, size_t len, int flags=0);
+    void writeAll(char const* buf, size_t len, int flags=0);
+    void readAll(char* buf, size_t len, int flags=0);
     int fileno() const;
     void setsockopt(int level, int option, int value);
 

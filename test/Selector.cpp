@@ -21,6 +21,7 @@
  */
 
 
+#include <coro/Common.hpp>
 #include <coro/coro.hpp>
 
 using namespace coro;

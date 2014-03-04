@@ -116,6 +116,41 @@ void Socket::setsockopt(int level, int option, int value) {
     }
 }
 
+void Socket::writeAll(char const* buf, size_t len, int flags) {
+// Write all data in 'buf'.  Block until all data is written, or the connection
+// is closed.  Throws a SocketCloseException if the connection was closed by
+// the other end.
+    while(len > 0) {
+        ssize_t bytes = write(buf, len, flags);
+        if (bytes == 0) {
+            throw SocketCloseException(); 
+        } else if (bytes > 0) {
+            buf += bytes;
+            len -= bytes;
+        } else {
+            assert(!"unexpected negative byte value");
+        }
+    }
+}
+
+void Socket::readAll(char* buf, size_t len, int flags) {
+// Read all data in 'buf'.  Block until all data is read, or the connection is
+// closed.  Throws a SocketCloseException if the connection was closed by the
+// other end.
+    while(len > 0) {
+        ssize_t bytes = read(buf, len, flags);
+        if (bytes == 0) {
+            throw SocketCloseException();
+        } else if (bytes > 0) {
+            buf += bytes;
+            len -= bytes;
+        } else {
+            assert(!"unexpected negative byte value");
+        }
+    }
+}
+
+
 void Socket::close() {
 #ifdef _WIN32
     ::closesocket(sd_);

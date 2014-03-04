@@ -80,7 +80,7 @@ Ptr<Socket> Socket::accept() {
 }
 
 ssize_t Socket::read(char* buf, size_t len, int flags) {
-// Read from the socket asynchronously
+// Read from the socket asynchronously.
     while (true) {
         auto ret = recv(sd_, buf, len, flags);
         if (ret < 0 && errno != EAGAIN) {
@@ -104,7 +104,6 @@ ssize_t Socket::write(char const* buf, size_t len, int flags) {
 // Write asynchronously
     size_t total = 0;
     while (true) {
-        printf("%zd\n", len);
         auto ret = send(sd_, buf, len, flags);
         if (ret < 0 && errno != EAGAIN) {
             throw SystemError();

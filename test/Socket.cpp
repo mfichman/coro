@@ -1,7 +1,5 @@
 #include <coro/Common.hpp>
-#include <coro/Socket.hpp>
-#include <coro/Hub.hpp>
-#include <coro/Error.hpp>
+#include <coro/coro.hpp>
 #include <iostream>
 
 void server() {
@@ -31,7 +29,7 @@ void client() {
     try {
         sd->connect(coro::SocketAddr("127.0.0.1", 9090));
         for (auto i = 0; i < 1000; ++i) {
-            sd->write(msg, strlen(msg));
+            sd->writeAll(msg, strlen(msg));
         } 
     } catch (coro::SystemError const& ex) {
         std::cout << ex.what() << std::endl;
@@ -42,6 +40,5 @@ int main() {
     auto cserver = coro::start(server);
     auto cclient = coro::start(client);
     coro::run();
-
     return 0;
 }
