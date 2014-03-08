@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Matt Fichman
+ * Copyright (c) 2014 Matt Fichman
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -20,35 +20,21 @@
  * IN THE SOFTWARE.
  */
 
+#include <coro/Common.hpp>
+#include <coro/coro.hpp>
 
-namespace coro {
+int main() {
+    auto counter = 0;
+    auto one = coro::start([&]{
+        coro::yield();
+        assert(counter==0);
+        counter++;
+    });
+    auto two = coro::start([&]{
+        one->join();
+        assert(counter==1);
+    });
 
-void Hub::poll() {
-// Poll for I/O events.  If there are pending coroutines, then don't block
-// indefinitely -- just check for any ready I/O.  If there are timers, block
-// only until the min timer is ready.
-    size_t tasks = runnable_.size()+timeout_.size();
-    struct timespec timeout{0};
-    struct kevent event{0};
-
-    if (!timeout_.empty() && runnable_.empty()) {
-        auto const diff = timeout_.top().time()-Time::now();
-        if (diff > Time::sec(0)) {
-            timeout = diff.timespec();
-        }
-    }
-
-    int res = kevent(handle_, 0, 0, &event, 1, (tasks <= 0 ? 0 : &timeout));
-    //self->iobytes = event.data;
-    if (res < 0) {
-        throw SystemError();
-    } else if (res == 0) {
-        // No events
-    } else {
-        auto const coro = (Coroutine*)event.udata;
-        assert(coro->status()!=Coroutine::EXITED);
-        coro->unblock();
-    }
-}
-
+    coro::run();
+    return 0;
 }

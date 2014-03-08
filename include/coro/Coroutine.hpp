@@ -76,13 +76,22 @@ class Coroutine : public std::enable_shared_from_this<Coroutine> {
 // A coroutine, or lightweight cooperative thread.  A coroutine runs a function
 // that is allowed to suspend and resume at any point during its execution.
 public:
-    enum Status { NEW, RUNNING, RUNNABLE, BLOCKED, WAITING, DEAD, DELETED };
+    enum Status { 
+        NEW, // Coroutine was just created, but hasn't been scheduled yet
+        RUNNABLE, // Coroutine is stopped, but scheduled to run 
+        RUNNING, // Coroutine is currently running (this == current())
+        BLOCKED, // Coroutine is stopped and blocked on I/O
+        WAITING, // Coroutine is stopped and waiting on an event
+        DELETED, // Coroutine is running, but shutting down due to destructor call
+        EXITED, // Coroutine has exited cleanly
+    };
 
     ~Coroutine();
 
     template <typename F>
     Coroutine(F func) : stack_(CORO_STACK_SIZE) { init(func); }
     Status status() const { return status_; }
+    void join();
 
 private:
     Coroutine(); // Special constructor for the main thread.
@@ -102,6 +111,7 @@ private:
     std::function<void()> func_; 
     Status status_;
     Stack stack_;
+    Ptr<Event> event_;
 
     friend Ptr<Coroutine> coro::current();
     friend Ptr<Coroutine> coro::main();

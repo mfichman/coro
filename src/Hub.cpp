@@ -79,10 +79,10 @@ void Hub::quiesce() {
         auto coroutine = weak.lock();
         if (!coroutine) { continue; }
         main()->status_ = Coroutine::RUNNABLE;
-        assert(coroutine->status()!=Coroutine::DEAD);
+        assert(coroutine->status()!=Coroutine::EXITED);
         coroutine->swap();
         switch (coroutine->status()) {
-        case Coroutine::DEAD: break;
+        case Coroutine::EXITED: break;
         case Coroutine::DELETED: break;
         case Coroutine::RUNNABLE:
             runnable_.push_back(coroutine);

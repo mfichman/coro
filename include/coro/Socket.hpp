@@ -46,8 +46,7 @@ class Socket {
 // Emulates Berkeley sockets using yields to block the coroutine when I/O
 // operations cannot complete right away.  Actually, this class is more like
 // Python's adaptation of sockets.  Failures throw exceptions rather than
-// returning error codes, and the send/recv/read/write functions do not return
-// until all data has been sent, or there is an error.
+// returning error codes.
 public:
     Socket(int type=SOCK_STREAM, int protocol=IPPROTO_TCP);
     ~Socket() { close(); }
@@ -57,10 +56,10 @@ public:
     void connect(SocketAddr const& addr);
     void listen(int backlog);
     void shutdown(int how);
-    ssize_t write(char const* buf, size_t len, int flags=0);
-    ssize_t read(char* buf, size_t len, int flags=0);
-    void writeAll(char const* buf, size_t len, int flags=0);
-    void readAll(char* buf, size_t len, int flags=0);
+    ssize_t write(char const* buf, size_t len, int flags=0); // Execute 1 write() syscall
+    ssize_t read(char* buf, size_t len, int flags=0); // Execte 1 read() syscall
+    void writeAll(char const* buf, size_t len, int flags=0); // Read whole buffer
+    void readAll(char* buf, size_t len, int flags=0); // Write whole buffer
     int fileno() const;
     void setsockopt(int level, int option, int value);
 

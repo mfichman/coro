@@ -24,6 +24,7 @@
 #include "coro/Coroutine.hpp"
 #include "coro/Hub.hpp"
 #include "coro/Error.hpp"
+#include "coro/Event.hpp"
 
 extern "C" {
 coro::Coroutine* coroCurrent = coro::main().get();
@@ -76,6 +77,7 @@ Coroutine::Coroutine() : stack_(0) {
 // Constructor for the main coroutine.
     status_ = Coroutine::RUNNING;
     stackPointer_ = 0;
+    event_.reset(new Event);
 }
 
 Coroutine::~Coroutine() {
@@ -83,16 +85,18 @@ Coroutine::~Coroutine() {
     if (!stack_.begin()) {
         // This is the main coroutine; don't free up anything, because we did
         // not allocate a stack for it.
-    } else if (status_ != Coroutine::DEAD && status_ != Coroutine::NEW) {
+    } else if (status_ != Coroutine::EXITED && status_ != Coroutine::NEW) {
         assert(status_ != Coroutine::BLOCKED);
         status_ = Coroutine::DELETED;
         swap(); // Allow the coroutine to clean up its stack
+        assert(status_ == Coroutine::EXITED);
     }
 }
 
 void Coroutine::init(std::function<void()> const& func) {
 // Creates a new coroutine and allocates a stack for it.
-    coro::main();
+    coro::main(); // Make sure main coroutine is set
+    event_.reset(new Event); 
     func_ = func;
     status_ = Coroutine::NEW;
 
@@ -159,7 +163,7 @@ void Coroutine::yield() {
     assert(coroCurrent == this);
     switch (coroCurrent->status_) {
     case Coroutine::RUNNING: coroCurrent->status_ = Coroutine::RUNNABLE; break;
-    case Coroutine::DEAD: break;
+    case Coroutine::EXITED: break;
     case Coroutine::DELETED: break; // fallthrough
     case Coroutine::RUNNABLE: // fallthrough
     case Coroutine::BLOCKED: // fallthrough
@@ -178,7 +182,7 @@ void Coroutine::block() {
     assert(coroCurrent == this);
     switch (status_) {
     case Coroutine::RUNNING: status_ = Coroutine::BLOCKED; break;
-    case Coroutine::DEAD: break;
+    case Coroutine::EXITED: break;
     case Coroutine::DELETED: break; // fallthrough
     case Coroutine::RUNNABLE: // fallthrough
     case Coroutine::BLOCKED: // fallthrough
@@ -194,7 +198,7 @@ void Coroutine::unblock() {
     switch (status_) {
     case Coroutine::BLOCKED: status_ = Coroutine::RUNNABLE; break;
     case Coroutine::RUNNING: // fallthrough
-    case Coroutine::DEAD: // fallthrough
+    case Coroutine::EXITED: // fallthrough
     case Coroutine::DELETED: // fallthrough
     case Coroutine::RUNNABLE: // fallthrough
     case Coroutine::NEW: // fallthrough
@@ -215,7 +219,7 @@ void Coroutine::wait() {
     assert(coroCurrent == this);
     switch (status_) {
     case Coroutine::RUNNING: status_ = Coroutine::WAITING; break;
-    case Coroutine::DEAD: break;
+    case Coroutine::EXITED: break;
     case Coroutine::DELETED: break; // fallthrough
     case Coroutine::RUNNABLE: // fallthrough
     case Coroutine::BLOCKED: // fallthrough
@@ -232,7 +236,7 @@ void Coroutine::notify() {
     case Coroutine::WAITING: status_ = Coroutine::RUNNABLE; break;
     case Coroutine::RUNNABLE: return;
     case Coroutine::RUNNING: // fallthrough
-    case Coroutine::DEAD: // fallthrough
+    case Coroutine::EXITED: // fallthrough
     case Coroutine::DELETED: // fallthrough
     case Coroutine::NEW: // fallthrough
     default: assert(!"illegal state"); break;
@@ -253,7 +257,7 @@ void Coroutine::swap() {
     case Coroutine::NEW: status_ = Coroutine::RUNNING; break;
     case Coroutine::BLOCKED: status_ = Coroutine::RUNNING; break;
     case Coroutine::RUNNING: return; // already running
-    case Coroutine::DEAD: assert(!"coroutine is dead"); break;
+    case Coroutine::EXITED: assert(!"coroutine is dead"); break;
     default: assert(!"illegal state"); break;
     }
     coroCurrent = this;
@@ -264,7 +268,7 @@ void Coroutine::swap() {
     case Coroutine::RUNNABLE: // fallthrough
     case Coroutine::BLOCKED: // fallthrough
     case Coroutine::NEW: // fallthrough
-    case Coroutine::DEAD: // fallthrough
+    case Coroutine::EXITED: // fallthrough
     default: assert(!"illegal state"); break;
     }
 }
@@ -287,14 +291,22 @@ void Coroutine::exit() {
     assert(coroCurrent == this);
     switch (status_) {
     case Coroutine::DELETED: break;
-    case Coroutine::RUNNING: status_ = Coroutine::DEAD; break;
-    case Coroutine::DEAD: // fallthrough
+    case Coroutine::RUNNING: status_ = Coroutine::EXITED; break;
+    case Coroutine::EXITED: // fallthrough
     case Coroutine::RUNNABLE: // fallthrough
     case Coroutine::NEW: // fallthrough
     default: assert(!"illegal state"); break;
     }
+    event_->notifyAll();
     main()->swap();
     assert(!"error: coroutine is dead");
+}
+
+void Coroutine::join() {
+    assert(current().get() != this); // Can't join on self -- deadlock
+    while (status_ != Coroutine::EXITED) {
+        event_->wait();
+    }
 }
 
 Ptr<Coroutine> current() {
@@ -320,6 +332,7 @@ void sleep(Time const& time) {
     hub()->timeoutIs(Timeout(time, current()));
     current()->wait();
 }
+
 
 
 }

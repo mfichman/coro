@@ -55,7 +55,7 @@ void Hub::poll() {
         op->error = GetLastError();
     }
     auto const coro = (Coroutine*)op->coroutine;
-    assert(coro->status()!=Coroutine::DEAD);
+    assert(coro->status()!=Coroutine::EXITED);
     coro->unblock();
 }
 
