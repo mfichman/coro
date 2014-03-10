@@ -57,7 +57,7 @@ uint64_t pageSize() {
 #endif
 }
 
-Stack::Stack(uint64_t size) : data_(0), size_(size) {
+Stack::Stack(uint32_t size) : data_(0), size_(size) {
 // Lazily initializes a large stack for the coroutine.  Initially, the
 // coroutine stack is quite small, to lower memory usage.  As the stack grows,
 // the Coroutine::fault handler will commit memory pages for the coroutine.
@@ -278,7 +278,7 @@ void Coroutine::start() throw() {
     try {
         func_();
         exit(); // Fell off the end of the coroutine function
-    } catch(ExitException const& ex) {
+    } catch(ExitException const&) {
         exit(); // Coroutine was deallocated before exiting
     } catch(...) {
         assert(!"error: coroutine killed by exception");

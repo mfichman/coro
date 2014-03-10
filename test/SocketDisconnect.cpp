@@ -50,7 +50,7 @@ void testReadDisconnect() {
         try {
             sd->readAll(buf, msg.length());     
             assert(!"failed");
-        } catch (coro::SocketCloseException const& ex) {
+        } catch (coro::SocketCloseException const&) {
         }
     });
 
@@ -73,11 +73,10 @@ void testWriteDisconnect() {
         auto sd = newClient();
         sd->writeAll(msg.c_str(), msg.length());
         try {
-            while (true) {
+            for (;;) {
                 sd->writeAll(msg.c_str(), msg.length());
             }
-            assert(!"failed");
-        } catch (coro::SystemError const& ex) {
+        } catch (coro::SocketCloseException const&) {
         }
     });
     coro::run();

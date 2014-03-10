@@ -7,7 +7,7 @@ using namespace coro;
 
 void recurse(int n) {
     char data[10000];
-    data[0] = n;
+    data[0] = char(n);
     if (n == 0) { return; }
     else { recurse(n-1); }
 }

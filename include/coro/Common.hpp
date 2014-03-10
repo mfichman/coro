@@ -64,7 +64,6 @@
 #include <memory>
 #include <functional>
 #include <cstdint>
-#include <cassert>
 #include <unordered_set>
 #include <set>
 #include <cassert>

@@ -31,10 +31,14 @@ class SocketAddr {
 // encoded the normal formats or a DNS name. 
 public:
     SocketAddr(std::string const& host, short port) : host(host), port(port) {}
+    SocketAddr(SocketAddr const& addr) : host(addr.host), port(addr.port) {}
     struct sockaddr_in sockaddr() const;
     struct in_addr inaddr() const;
     std::string const host;
     short const port;
+
+private:
+    void operator=(SocketAddr const&) {}
 };
 
 class SocketCloseException {
@@ -64,7 +68,7 @@ public:
     void setsockopt(int level, int option, int value);
 
 private:
-    Socket(int sd, char const* bogus);
+    Socket(int sd, char const* /* bogus */);
 
     int sd_;
 };

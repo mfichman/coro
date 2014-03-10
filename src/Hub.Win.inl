@@ -31,7 +31,7 @@ void Hub::poll() {
     if (!timeout_.empty() && runnable_.empty()) {
         auto const diff = timeout_.top().time()-Time::now();
         if (diff > Time::sec(0)) {
-            timeout = diff.millisec();
+            timeout = DWORD(diff.millisec());
         }
     }
     if (tasks <= 0) {

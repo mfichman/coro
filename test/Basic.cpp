@@ -28,7 +28,7 @@ void foo() {
     try {
         std::cout << "hello" << std::endl;
         coro::yield();
-    } catch (coro::ExitException const& ex) {
+    } catch (coro::ExitException const&) {
         std::cout << "exception" << std::endl;
         throw;
     }

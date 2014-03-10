@@ -56,7 +56,7 @@ int Event::waitToken(Ptr<Coroutine> waiter) {
 }
 
 bool Event::waitTokenValid(Ptr<Coroutine> waiter, int token) {
-    if (token < waiter_.size()) {
+    if (size_t(token) < waiter_.size()) {
         return waiter_[token].coroutine() == waiter;
     } else {
         return false;
@@ -64,7 +64,7 @@ bool Event::waitTokenValid(Ptr<Coroutine> waiter, int token) {
 }
 
 void Event::waitTokenDel(int token) {
-    assert(token < waiter_.size() && "invalid wait token");
+    assert(size_t(token) < waiter_.size() && "invalid wait token");
     waiter_[token] = EventRecord();
 }
 

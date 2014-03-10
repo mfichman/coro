@@ -52,7 +52,7 @@ class Stack {
 // memory it needs.  A coroutine's stack never shrinks; to garbage-collect the
 // stack, the coroutine must be destroyed.
 public:
-    Stack(uint64_t size);
+    Stack(uint32_t size);
     ~Stack(); 
     uint8_t* end() { return data_+size_; }
     uint8_t* begin() { return data_; }

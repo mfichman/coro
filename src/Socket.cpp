@@ -88,7 +88,7 @@ Socket::Socket(int type, int protocol) : sd_(0) {
 #endif
 }
 
-Socket::Socket(int sd, char const* bogus) : sd_(sd) {
+Socket::Socket(int sd, char const* /* bogus */) : sd_(sd) {
 #ifdef _WIN32
     if(!CreateIoCompletionPort((HANDLE)sd_, hub()->handle(), 0, 0)) {
         throw SystemError();
