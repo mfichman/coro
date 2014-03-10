@@ -142,6 +142,21 @@ Ptr<Socket> Socket::accept() {
     return Ptr<Socket>(new Socket(sd, ""));
 }
 
+bool isSocketCloseError(DWORD error) {
+// Returns true if the given error code should be converted to a socket close
+// exception.
+    switch (error) {
+    case ERROR_NETNAME_DELETED:
+    case ERROR_CONNECTION_ABORTED:
+    case WSAENETRESET:
+    case WSAECONNABORTED:
+    case WSAECONNRESET:
+        return true;
+    default:
+        return false;
+    }
+}
+
 ssize_t Socket::read(char* buf, size_t len, int flags) {
 // Read from the socket asynchronously.  Returns the # of bytes read.
     WSABUF wsabuf = { len, buf };
@@ -150,14 +165,24 @@ ssize_t Socket::read(char* buf, size_t len, int flags) {
     OVERLAPPED* evt = &op.overlapped;
     DWORD flg = flags;
 
+    if (sd_ == -1) {
+        throw SocketCloseException(); // Socket closed locally
+    }
+
     if(WSARecv(sd_, &wsabuf, 1, NULL, &flg, evt, NULL)) {
-        if (ERROR_IO_PENDING != GetLastError()) {
+        if (isSocketCloseError(GetLastError())) {
+            throw SocketCloseException(); // Socket closed remotely
+        } else if (ERROR_IO_PENDING != GetLastError()) {
             throw SystemError();
         } 
     }
     current()->block();
     if (ERROR_SUCCESS != op.error) {
-        throw SystemError(op.error);
+        if (isSocketCloseError(op.error)) {
+            throw SocketCloseException(); // Socket closed remotely during read
+        } else {
+            throw SystemError(op.error);
+        }
     }
     assert(op.bytes >= 0);
     return op.bytes;
@@ -170,14 +195,24 @@ ssize_t Socket::write(char const* buf, size_t len, int flags) {
     op.coroutine = current().get();
     OVERLAPPED* evt = &op.overlapped;
 
+    if (sd_ == -1) {
+        throw SocketCloseException(); // Socket closed locally
+    }
+
     if(WSASend(sd_, &wsabuf, 1, NULL, flags, evt, NULL)) {
-        if (ERROR_IO_PENDING != GetLastError()) {
+        if (isSocketCloseError(GetLastError())) {
+            throw SocketCloseException(); // Socket closed remotely 
+        } else if (ERROR_IO_PENDING != GetLastError()) {
             throw SystemError();
         } 
     }
     current()->block();
     if (ERROR_SUCCESS != op.error) {
-        throw SystemError(op.error);
+        if (isSocketCloseError(op.error)) {
+            throw SocketCloseException(); // Socket closed remotely during write
+        } else {
+            throw SystemError(op.error);
+        }
     }
     assert(op.bytes >= 0);
     return op.bytes;
