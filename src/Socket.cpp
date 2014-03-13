@@ -85,6 +85,9 @@ Socket::Socket(int type, int protocol) : sd_(0) {
     if(!CreateIoCompletionPort((HANDLE)sd_, hub()->handle(), 0, 0)) {
         throw SystemError();
     }
+#else
+    setsockopt(SOL_SOCKET, SO_NOSIGPIPE, true);    
+    // Don't send SIGPIPE for this socket; handle the write() error instead.
 #endif
 }
 
@@ -93,6 +96,9 @@ Socket::Socket(int sd, char const* /* bogus */) : sd_(sd) {
     if(!CreateIoCompletionPort((HANDLE)sd_, hub()->handle(), 0, 0)) {
         throw SystemError();
     }
+#else
+    setsockopt(SOL_SOCKET, SO_NOSIGPIPE, true); 
+    // Don't send SIGPIPE for this socket; handle the write() error instead.
 #endif
 }
 
