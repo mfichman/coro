@@ -52,6 +52,8 @@ SystemError::SystemError(int error) :
 #else
     error_(error),
     msg_(strerror(error_)) {
+    
+    assert(false);
 #endif
 }
 

@@ -79,54 +79,106 @@ Ptr<Socket> Socket::accept() {
     return Ptr<Socket>(new Socket(sd, ""));
 }
 
+bool isSocketCloseError(int error) {
+// Return true if the error (as returned by send/recv) is an error that
+// indicates the socket was closed forcibly.  These errors are converted into
+// SocketCloseExceptions.
+    switch (error) {
+    case EPIPE:
+    case ENETRESET:
+    case ECONNABORTED:
+    case ECONNRESET:
+    case ESHUTDOWN:
+        return true;
+    default:
+        return false;
+    }
+}
+
 ssize_t Socket::read(char* buf, size_t len, int flags) {
 // Read from the socket asynchronously.
-    while (true) {
-        auto ret = recv(sd_, buf, len, flags);
-        if (ret < 0 && errno != EAGAIN) {
-            throw SystemError();
-        } else if (ret >= 0) {
-            return ret;
-        }
-        int kqfd = hub()->handle();
-        int kqflags = EV_ADD|EV_ONESHOT|EV_EOF;
-        struct kevent ev{0};
-        EV_SET(&ev, sd_, EVFILT_READ, kqflags, 0, 0, current().get()); 
-        if (kevent(kqfd, &ev, 1, 0, 0, 0) < 0) {
-            throw SystemError();
-        }
-        current()->block();
+    if (sd_ == -1) {
+        throw SocketCloseException(); // Closed locally
     }
-    return 0;
+
+    ssize_t ret = recv(sd_, buf, len, flags);
+    if (ret < 0) {
+        if (isSocketCloseError(errno)) {
+            throw SocketCloseException(); // Closed remotely
+        } else if (EAGAIN != errno) {
+            throw SystemError();
+        }
+    } else {
+        return ret; // Recv didn't block
+    } 
+
+    // Recv blocked.  Set up the kevent, and then try to call recv() again
+    int const kqfd = hub()->handle();
+    int const kqflags = EV_ADD|EV_ONESHOT|EV_EOF;
+    struct kevent ev{0};
+    EV_SET(&ev, sd_, EVFILT_READ, kqflags, 0, 0, current().get()); 
+    if (kevent(kqfd, &ev, 1, 0, 0, 0) < 0) {
+        throw SystemError();
+    }
+    current()->block();
+
+    if (sd_ == -1) {
+        throw SocketCloseException();
+    }
+
+    ret = recv(sd_, buf, len, flags);
+    if (ret < 0) {
+        if (isSocketCloseError(errno)) {
+            throw SocketCloseException(); // Closed remotely
+        } else {
+            throw SystemError();
+        }
+    }
+    assert(ret >= 0);
+    return ret;
 }
 
 ssize_t Socket::write(char const* buf, size_t len, int flags) {
 // Write asynchronously
-    size_t total = 0;
-    while (true) {
-        auto ret = send(sd_, buf, len, flags);
-        if (ret < 0 && errno != EAGAIN) {
-            throw SystemError();
-        } else if (ret == 0) {
-            return total;
-        } else {
-            len -= ret;
-            buf += ret;
-            total += ret; 
-        }
-        if (len == 0) {
-            return total;
-        }
-        int kqfd = hub()->handle();
-        int kqflags = EV_ADD|EV_ONESHOT|EV_EOF;
-        struct kevent ev{0};
-        EV_SET(&ev, sd_, EVFILT_WRITE, kqflags, 0, 0, current().get()); 
-        if (kevent(kqfd, &ev, 1, 0, 0, 0) < 0) {
-            throw SystemError();
-        }
-        current()->block();
+    if (sd_ == -1) {
+        throw SocketCloseException(); // Closed locally
     }
-    return total;
+
+    ssize_t ret = send(sd_, buf, len, flags);
+    if (ret < 0) {
+        if (isSocketCloseError(errno)) {
+            throw SocketCloseException(); // Closed remotely
+        } else if (EAGAIN != errno) {
+            throw SystemError();
+        }
+    } else {
+        return ret; // Send didn't block
+    } 
+
+    // Send blocked.  Set up the kevent, and then try to call send() again
+    int const kqfd = hub()->handle();
+    int const kqflags = EV_ADD|EV_ONESHOT|EV_EOF;
+    struct kevent ev{0};
+    EV_SET(&ev, sd_, EVFILT_WRITE, kqflags, 0, 0, current().get()); 
+    if (kevent(kqfd, &ev, 1, 0, 0, 0) < 0) {
+        throw SystemError();
+    }
+    current()->block();
+
+    if (sd_ == -1) {
+        throw SocketCloseException();
+    }
+
+    ret = send(sd_, buf, len, flags);
+    if (ret < 0) {
+        if (isSocketCloseError(errno)) {
+            throw SocketCloseException(); // Closed remotely
+        } else {
+            throw SystemError();
+        }
+    } 
+    assert(ret >= 0);
+    return ret;
 }
 
 
