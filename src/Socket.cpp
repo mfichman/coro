@@ -41,14 +41,14 @@ struct in_addr SocketAddr::inaddr() const {
 // first.  If this fails, then assume that the address string is a DNS name,
 // and do a DNS lookup.
     struct in_addr in{0};
-    if (host.empty()) {
+    if (host().empty()) {
         return in;
     }
-    if (inet_pton(AF_INET, (char*)host.c_str(), &in) == 1) { 
+    if (inet_pton(AF_INET, (char*)host().c_str(), &in) == 1) { 
         return in;
     }
     struct addrinfo* res = 0;
-    auto ret = getaddrinfo(host.c_str(), 0, 0, &res);
+    auto ret = getaddrinfo(host().c_str(), 0, 0, &res);
     if (ret) {
         throw SystemError(gai_strerror(ret));
     }
@@ -70,7 +70,7 @@ struct sockaddr_in SocketAddr::sockaddr() const {
     struct sockaddr_in sin{0};
     sin.sin_family = AF_INET;
     sin.sin_addr = inaddr();
-    sin.sin_port = htons(port);
+    sin.sin_port = htons(port());
     return sin;
 }
 

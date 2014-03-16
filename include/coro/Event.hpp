@@ -55,7 +55,7 @@ public:
     }
 
 private:
-    int waiters() const { return waiter_.size(); }
+    size_t waiters() const { return waiter_.size(); }
     int waitToken(Ptr<Coroutine> waiter);
     bool waitTokenValid(Ptr<Coroutine> waiter, int token);
     void waitTokenDel(int token);

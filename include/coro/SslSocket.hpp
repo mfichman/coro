@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Matt Fichman
+ * Copyright (c) 2014 Matt Fichman
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -22,13 +22,37 @@
 
 #pragma once
 
-#include "Common.hpp"
-#include "Common.hpp"
-#include "Coroutine.hpp"
-#include "Error.hpp"
-#include "Event.hpp"
-#include "Hub.hpp"
-#include "Selector.hpp"
-#include "Socket.hpp"
-#include "SslSocket.hpp"
-#include "Time.hpp"
+#include "coro/Common.hpp"
+#include "coro/Socket.hpp"
+
+namespace coro {
+
+class SslError {
+public:
+    SslError(unsigned long error);
+    std::string const& what() const { return what_; }
+
+private:
+    std::string what_;
+};
+
+class SslSocket : public Socket {
+public:
+    SslSocket(int type=SOCK_STREAM, int protocol=IPPROTO_TCP);
+    virtual ~SslSocket();
+    virtual ssize_t write(char const* buf, size_t len, int flags=0); // Execute 1 write() syscall
+    virtual ssize_t read(char* buf, size_t len, int flags=0); // Execte 1 read() syscall
+
+private:
+    void writeAllRaw(char const* buf, size_t len, int flags);
+    void writeFromBio(int flags);
+    void readToBio(int flags);
+
+    SSL_CTX* context_;
+    SSL* conn_;
+    BIO* in_;
+    BIO* out_;
+    bool eof_;
+};
+
+}

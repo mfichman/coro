@@ -60,6 +60,10 @@
 #include <fcntl.h>
 #endif
 
+#include <openssl/rand.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+
 #include <iostream>
 #include <memory>
 #include <functional>

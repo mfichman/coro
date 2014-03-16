@@ -30,7 +30,7 @@ std::string winErrorMsg(DWORD error) {
     std::string buffer(1024,'0');
     LPSTR buf = (LPSTR)buffer.c_str();
     DWORD flags = FORMAT_MESSAGE_FROM_SYSTEM;
-    DWORD len = FormatMessage(flags, 0, error, 0, buf, buffer.size(), 0);
+    DWORD len = FormatMessage(flags, 0, error, 0, buf, (DWORD)buffer.size(), 0);
     buffer.resize(len);
     return buffer;
 }
