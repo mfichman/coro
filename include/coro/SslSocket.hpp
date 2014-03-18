@@ -29,7 +29,7 @@ namespace coro {
 
 class SslError {
 public:
-    SslError(unsigned long error);
+    SslError();
     std::string const& what() const { return what_; }
 
 private:
@@ -40,13 +40,20 @@ class SslSocket : public Socket {
 public:
     SslSocket(int type=SOCK_STREAM, int protocol=IPPROTO_TCP);
     virtual ~SslSocket();
+    virtual Ptr<Socket> accept();
+    virtual void listen(int backlog);
+    virtual void connect(SocketAddr const& addr);
     virtual ssize_t write(char const* buf, size_t len, int flags=0); // Execute 1 write() syscall
     virtual ssize_t read(char* buf, size_t len, int flags=0); // Execte 1 read() syscall
+    void useCertificateFile(std::string const& path);
+    void usePrivateKeyFile(std::string const& path);
 
 private:
+    SslSocket(int sd, SSL_CTX* context);
     void writeAllRaw(char const* buf, size_t len, int flags);
     void writeFromBio(int flags);
     void readToBio(int flags);
+    void handleReturn(int ret);
 
     SSL_CTX* context_;
     SSL* conn_;

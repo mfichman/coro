@@ -102,6 +102,10 @@ Socket::Socket(int sd, char const* /* bogus */) : sd_(sd) {
 #endif
 }
 
+Ptr<Socket> Socket::accept() {
+    return Ptr<Socket>(new Socket(acceptRaw(), ""));
+}
+
 void Socket::bind(SocketAddr const& addr) {
 // Binds the socket to a port
     struct sockaddr_in sin = addr.sockaddr();
@@ -156,6 +160,9 @@ void Socket::readAll(char* buf, size_t len, int flags) {
     }
 }
 
+void Socket::shutdown(int how) {
+    ::shutdown(sd_, how);
+}
 
 void Socket::close() {
 #ifdef _WIN32

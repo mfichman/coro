@@ -54,12 +54,12 @@ class Socket {
 public:
     Socket(int type=SOCK_STREAM, int protocol=IPPROTO_TCP);
     virtual ~Socket() { close(); }
-    Ptr<Socket> accept();
     void bind(SocketAddr const& addr);
-    void close();
-    virtual void connect(SocketAddr const& addr);
     void listen(int backlog);
     void shutdown(int how);
+    void close();
+    virtual void connect(SocketAddr const& addr);
+    virtual Ptr<Socket> accept();
     virtual ssize_t write(char const* buf, size_t len, int flags=0); // Execute 1 write() syscall
     virtual ssize_t read(char* buf, size_t len, int flags=0); // Execte 1 read() syscall
     void writeAll(char const* buf, size_t len, int flags=0); // Read whole buffer
@@ -67,9 +67,11 @@ public:
     int fileno() const;
     void setsockopt(int level, int option, int value);
 
-private:
-    Socket(int sd, char const* /* bogus */);
+protected:
+    Socket(int sd, char const* bogus);
+    int acceptRaw();
 
+private:
     int sd_;
 };
 

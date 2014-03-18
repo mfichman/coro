@@ -80,7 +80,7 @@ void Socket::connect(SocketAddr const& addr) {
     }
 }
 
-Ptr<Socket> Socket::accept() {
+int Socket::acceptRaw() {
     // Waits for a client to connect, then returns a pointer to the established
     // connection.  The code below is a bit tricky, because Windows expects the
     // call to accept() to happen before the I/O event can be triggered.  For
@@ -139,7 +139,7 @@ Ptr<Socket> Socket::accept() {
         throw SystemError();
     }
 
-    return Ptr<Socket>(new Socket(sd, ""));
+    return sd;
 }
 
 bool isSocketCloseError(DWORD error) {

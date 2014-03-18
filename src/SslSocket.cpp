@@ -25,31 +25,85 @@
 
 namespace coro {
 
-SslError::SslError(unsigned long error) : what_(ERR_error_string(error, 0)) {
+SslError::SslError() : what_(ERR_error_string(ERR_get_error(), 0)) {
 }
 
-SslSocket::SslSocket(int type, int protocol) : Socket(type, protocol), eof_(false) {
-    SSL_load_error_strings();
+SslSocket::SslSocket(int type, int protocol) : Socket(type, protocol), eof_(false), context_(0), conn_(0) {
+// Intitialize the SSL client-side socket
     SSL_library_init();
+    SSL_load_error_strings();
     ERR_load_BIO_strings();
-    OpenSSL_add_all_algorithms();
+}
 
-    context_ = SSL_CTX_new(SSLv23_client_method());
-    assert(context_);
+SslSocket::SslSocket(int sd, SSL_CTX* context) : Socket(sd, ""), eof_(false), context_(0) {
+// Initialize SSL server-side socket
+    SSL_library_init();
+    SSL_load_error_strings();
+    ERR_load_BIO_strings();
 
-    conn_ = SSL_new(context_);
+    conn_ = SSL_new(context);
     assert(conn_);
 
     in_ = BIO_new(BIO_s_mem());
     out_ = BIO_new(BIO_s_mem());
     SSL_set_bio(conn_, in_, out_);
-    SSL_set_connect_state(conn_);
-
+    SSL_set_accept_state(conn_);
 }
 
 SslSocket::~SslSocket() {
-    SSL_free(conn_);
+    SSL_free(conn_); // conn_ tracks the associated the SSL_CTX its refcount.
     SSL_CTX_free(context_);
+}
+
+Ptr<Socket> SslSocket::accept() {
+    return Ptr<Socket>(new SslSocket(acceptRaw(), context_));
+}
+
+void SslSocket::listen(int backlog) {
+    if (!context_) {
+        context_ = SSL_CTX_new(SSLv23_server_method());
+        assert(context_);
+    }
+    Socket::listen(backlog);
+}
+
+void SslSocket::connect(SocketAddr const& addr) {
+    if (!context_) {
+       context_ = SSL_CTX_new(SSLv23_client_method());
+       assert(context_);
+    }
+    if (!conn_) {
+       conn_ = SSL_new(context_);
+       assert(conn_);
+   
+       in_ = BIO_new(BIO_s_mem());
+       out_ = BIO_new(BIO_s_mem());
+       SSL_set_bio(conn_, in_, out_);
+       SSL_set_connect_state(conn_);
+    }
+
+    Socket::connect(addr);
+}
+
+void SslSocket::useCertificateFile(std::string const& path) {
+    if (!context_) {
+        assert(!"not initialized yet");
+    }
+    if (SSL_CTX_use_certificate_file(context_, path.c_str(), SSL_FILETYPE_PEM) <= 0) {
+        throw SslError();
+    }
+}
+
+void SslSocket::usePrivateKeyFile(std::string const& path) {
+    if (!context_) {
+        assert(!"not initialized yet");
+    }
+    if (SSL_CTX_use_PrivateKey_file(context_, path.c_str(), SSL_FILETYPE_PEM) <= 0) {
+        throw SslError();
+    }
+    if (!SSL_CTX_check_private_key(context_)) {
+        throw SslError();
+    }
 }
 
 void SslSocket::writeAllRaw(char const* buf, size_t len, int flags) {
@@ -98,45 +152,41 @@ void SslSocket::readToBio(int flags) {
     }
 }
 
-ssize_t SslSocket::write(char const* buf, size_t len, int flags) {
+ssize_t SslSocket::write(char const* buf, size_t len, int /* unused */) {
 retry:
     ssize_t bytes = SSL_write(conn_, buf, len);
-	writeFromBio(0); // Write data if available
+    writeFromBio(0); // Write data if available
     if (bytes < 0) {
-        int err = SSL_get_error(conn_, bytes);
-        if (SSL_ERROR_WANT_WRITE == err) { // 
-            writeFromBio(flags);
-            goto retry;
-        } else if (SSL_ERROR_WANT_READ == err) { // BIO has data available
-            readToBio(0); 
-            goto retry; 
-        } else {
-            throw SslError(err);
-        }
+        handleReturn(bytes);
+        goto retry;
     }
     return bytes; 
 }
 
-ssize_t SslSocket::read(char* buf, size_t len, int flags) {
+ssize_t SslSocket::read(char* buf, size_t len, int /* unused */) {
 retry:
-    readToBio(flags); 
     ssize_t bytes = SSL_read(conn_, buf, len);
     if (bytes < 0) {
-        int err = SSL_get_error(conn_, bytes);
-        if (SSL_ERROR_WANT_WRITE == err) {
-            writeFromBio(0);
-            goto retry;
-        } else if (SSL_ERROR_WANT_READ == err) {
-            if (eof_) {
-                return 0;
-            }
-            readToBio(flags); 
-            goto retry; 
-        } else {
-            throw SslError(err);
+        handleReturn(bytes);
+        if (eof_) {
+            return 0;
         }
+        goto retry;
     }
     return bytes;
+}
+
+void SslSocket::handleReturn(int ret) {
+    int err = SSL_get_error(conn_, ret);
+    if (SSL_ERROR_WANT_WRITE == err) {
+        writeFromBio(0);
+    } else if (SSL_ERROR_WANT_READ == err) {
+        readToBio(0); 
+    } else if (SSL_ERROR_SSL == err) {
+        throw SslError();
+    } else {
+        assert(!"unexpected error");
+    }
 }
 
 }

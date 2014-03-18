@@ -52,7 +52,7 @@ void Socket::connect(SocketAddr const& addr) {
     } 
 }
 
-Ptr<Socket> Socket::accept() {
+int Socket::accept() {
 // Accept a new incoming connection asynchronously. Register to wait for a READ
 // event, which signals that we can call accept() without blocking.
     int kqfd = hub()->handle();
@@ -76,7 +76,7 @@ Ptr<Socket> Socket::accept() {
     if (fcntl(sd, F_SETFL, O_NONBLOCK) < 0) {
         throw SystemError();
     }
-    return Ptr<Socket>(new Socket(sd, ""));
+    return sd;
 }
 
 bool isSocketCloseError(int error) {
