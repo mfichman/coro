@@ -23,19 +23,21 @@
 #include "coro/Common.hpp"
 #include "coro/SslSocket.hpp"
 
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+
 namespace coro {
 
 SslError::SslError() : what_(ERR_error_string(ERR_get_error(), 0)) {
 }
 
-SslSocket::SslSocket(int type, int protocol) : Socket(type, protocol), eof_(false), context_(0), conn_(0) {
+SslSocket::SslSocket(int type, int protocol) : Socket(type, protocol), context_(0), conn_(0), eof_(false) {
 // Intitialize the SSL client-side socket
     SSL_library_init();
     SSL_load_error_strings();
     ERR_load_BIO_strings();
 }
 
-SslSocket::SslSocket(int sd, SSL_CTX* context) : Socket(sd, ""), eof_(false), context_(0) {
+SslSocket::SslSocket(int sd, SSL_CTX* context) : Socket(sd, ""), context_(0), eof_(false) {
 // Initialize SSL server-side socket
     SSL_library_init();
     SSL_load_error_strings();

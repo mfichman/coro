@@ -52,7 +52,7 @@ void Socket::connect(SocketAddr const& addr) {
     } 
 }
 
-int Socket::accept() {
+int Socket::acceptRaw() {
 // Accept a new incoming connection asynchronously. Register to wait for a READ
 // event, which signals that we can call accept() without blocking.
     int kqfd = hub()->handle();

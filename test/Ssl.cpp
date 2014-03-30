@@ -51,10 +51,10 @@ void testClientServer() {
 		ls.reset();
         char const buf[] = "foobar\n";
         sd->writeAll(buf, sizeof(buf)-1);
-		sd->shutdown(SD_SEND);
+		sd->shutdown(SHUT_RD);
 
 		char buf2[4096];
-		while (ssize_t len = sd->read(buf2, sizeof(buf2))) {
+		while (sd->read(buf2, sizeof(buf2))) {
 		}
     });
 

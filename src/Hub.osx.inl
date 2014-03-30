@@ -37,9 +37,12 @@ void Hub::poll() {
             timeout = diff.timespec();
         }
     }
+    // Don't sleep if the sleep time is less than 1 us.
+    if (timeout.tv_nsec < 1000 && timeout.tv_sec == 0 && blocked_ == 0) {
+        return;
+    }
 
     int res = kevent(handle_, 0, 0, &event, 1, (tasks <= 0 ? 0 : &timeout));
-    //self->iobytes = event.data;
     if (res < 0) {
         throw SystemError();
     } else if (res == 0) {
