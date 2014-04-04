@@ -23,7 +23,9 @@
 #include "coro/Common.hpp"
 #include "coro/SslSocket.hpp"
 
+#ifdef __APPLE__
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
 
 namespace coro {
 

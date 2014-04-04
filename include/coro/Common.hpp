@@ -34,6 +34,9 @@
 #undef ERROR
 #undef Ptr
 #define ssize_t SSIZE_T
+#define SHUT_RD SD_RECEIVE
+#define SHUT_RW SD_BOTH
+#define SHUT_WR SD_SEND
 #endif
 
 #ifdef __APPLE__
