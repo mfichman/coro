@@ -90,7 +90,7 @@ class Package:
             return self.env['PLATFORM'] == lib.platforms
 
     def _setup_assets(self):
-        if len(self.assets) < 0:
+        if len(self.assets) <= 0:
             return
 
         fd = open('include/%s/Assets.hpp' % self.name, 'w')
@@ -129,15 +129,15 @@ class Package:
         # Set up the basic configuration options
         (system, _, release, version, machine, proc) = platform.uname()
         self.name = self.__class__.__name__.lower()
-        self.pch = '%s/Common.hpp' % self.name
+        self.pch_header = '%s/Common.hpp' % self.name
         self.build_mode = ARGUMENTS.get('mode', 'debug')
         self.version = '.'.join((self.major_version, self.minor_version, self.patch))
         self.branch = os.popen('git rev-parse --abbrev-ref HEAD').read().strip()
         self.revision = os.popen('git rev-parse HEAD').read().strip()
         self.defines.update({
-            'VERSION': self.version,
-            'REVISION': self.revision,
-            'BRANCH': self.branch,
+            '%s_VERSION' % self.name.upper(): self.version,
+            '%s_REVISION' % self.name.upper(): self.revision,
+            '%s_BRANCH' % self.name.upper(): self.branch,
         })
         self.includes.extend([
             'include',
@@ -160,9 +160,9 @@ class Package:
             self.env.Append(CXXFLAGS='/O2')
         else:
             assert not "Unknown build type"
-        self.env.Append(CXXFLAGS='/W4 /WX /MT /EHsc /Zi /Gm /FS')
+        self.env.Append(CXXFLAGS='/W4 /WX /wd4100 /MT /EHsc /Zi /Gm /FS')
         self.env.Append(CXXFLAGS='/Fpbuild/Common.pch')
-        self.env.Append(CXXFLAGS='/Yu%s' % self.pch)
+        self.env.Append(CXXFLAGS='/Yu%s' % self.pch_header)
         self.env.Append(LINKFLAGS='/DEBUG')
         self.src += self.env.Glob('build/src/**.asm')
         # Add MASM assembly files
@@ -183,7 +183,7 @@ class Package:
         self._setup_build()
 
         pchenv = self.env.Clone()
-        pchenv.Append(CXXFLAGS='/Yc%s' % self.pch)
+        pchenv.Append(CXXFLAGS='/Yc%s' % self.pch_header)
         self.pch = pchenv.StaticObject('build/src/Common', 'build/src/Common.cpp')
 
         self._finish_build()
@@ -209,8 +209,8 @@ class Package:
         self._setup_build()
 
         pchenv = self.env.Clone()
-        self.pch = pchenv.Pch('include/%s/Common.hpp.pch' % self.name, 'include/%s' % self.pch)
-        self.env.Append(CXXFLAGS='-include include/%s/Common.hpp' % self.name)
+        self.pch = pchenv.Pch('build/Common.pch', 'include/%s' % self.pch_header)
+        self.env.Append(CXXFLAGS='-include-pch build/Common.pch')
 
         self._finish_build()
 
@@ -224,22 +224,25 @@ class Package:
         self.env.Append(LIBPATH=self.lib_path)
         self.env.Append(LIBS=self.libs)
 
+    def _finish_build(self):
         self.src += self.env.Glob('build/src/**.cpp')
         self.src += self.env.Glob('build/src/**.c')
         self.src = filter(lambda x: 'Common.cpp' not in x.name, self.src)
-        self.env.Depends(self.src, self.pch) # Wait for pch to build
+        self.env.Depends(self.src, self.pch)
 
-    def _finish_build(self):
         if self.env['PLATFORM'] == 'win32':
-            self.lib = self.env.StaticLibrary('lib/%s' % self.name, (self.src, self.pch))
+            self.lib = self.env.StaticLibrary('lib/%s' % self.name, self.src)
         else:
             self.lib = self.env.SharedLibrary('lib/%s' % self.name, self.src)
+
         if self.kind == 'bin':
             main = self.env.Glob('Main.cpp')
+            self.env.Depends(main, self.pch)
             self.program = self.env.Program('bin/%s' % self.name, (self.lib, main))
         for tool in glob.glob('tools/*.cpp'):
             name = os.path.splitext(os.path.basename(tool.lower()))[0]
-            self.env.Program('bin/%s-%s' % (self.name, name), (self.lib, tool))
+            self.env.Depends(tool, self.pch)
+            tool = self.env.Program('bin/%s-%s' % (self.name, name), (self.lib, tool))
 
     def _setup_tests(self):
         # Configure the test environment
