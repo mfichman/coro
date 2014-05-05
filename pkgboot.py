@@ -160,7 +160,7 @@ class Package:
             self.env.Append(CXXFLAGS='/O2')
         else:
             assert not "Unknown build type"
-        self.env.Append(CXXFLAGS='/W4 /WX /wd4100 /MT /EHsc /Zi /Gm /FS')
+        self.env.Append(CXXFLAGS='/W4 /WX /wd4100 /MD /EHsc /Zi /Gm /FS')
         self.env.Append(CXXFLAGS='/Fpbuild/Common.pch')
         self.env.Append(CXXFLAGS='/Yu%s' % self.pch_header)
         self.env.Append(LINKFLAGS='/DEBUG')
@@ -233,12 +233,14 @@ class Package:
         if self.env['PLATFORM'] == 'win32':
             self.lib = self.env.StaticLibrary('lib/%s' % self.name, self.src)
         else:
-            self.lib = self.env.SharedLibrary('lib/%s' % self.name, self.src)
-
+            self.lib = self.env.SharedLibrary('lib/%s' % self.name, (self.src,))
         if self.kind == 'bin':
             main = self.env.Glob('Main.cpp')
             self.env.Depends(main, self.pch)
-            self.program = self.env.Program('bin/%s' % self.name, (self.lib, main))
+            if self.env['PLATFORM'] == 'win32':
+                self.program = self.env.Program('bin/%s' % self.name, (self.lib, main, self.pch))
+            else:
+                self.program = self.env.Program('bin/%s' % self.name, (self.lib, main))
         for tool in glob.glob('tools/*.cpp'):
             name = os.path.splitext(os.path.basename(tool.lower()))[0]
             self.env.Depends(tool, self.pch)
