@@ -231,7 +231,7 @@ class Package:
         self.env.Depends(self.src, self.pch)
 
         if self.env['PLATFORM'] == 'win32':
-            self.lib = self.env.StaticLibrary('lib/%s' % self.name, self.src)
+            self.lib = self.env.StaticLibrary('lib/%s' % self.name, (self.src, self.pch))
         else:
             self.lib = self.env.SharedLibrary('lib/%s' % self.name, (self.src,))
         if self.kind == 'bin':

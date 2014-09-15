@@ -61,7 +61,7 @@ public:
     virtual void connect(SocketAddr const& addr);
     virtual Ptr<Socket> accept();
     virtual ssize_t write(char const* buf, size_t len, int flags=0); // Execute 1 write() syscall
-    virtual ssize_t read(char* buf, size_t len, int flags=0); // Execte 1 read() syscall
+    virtual ssize_t read(char* buf, size_t len, int flags=0); // Execute 1 read() syscall
     void writeAll(char const* buf, size_t len, int flags=0); // Read whole buffer
     void readAll(char* buf, size_t len, int flags=0); // Write whole buffer
     int fileno() const;
