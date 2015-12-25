@@ -129,9 +129,8 @@ void SslSocket::writeAllRaw(char const* buf, size_t len, int flags) {
 
 void SslSocket::writeFromBio(int flags) {
     char buf[4096];
-    ssize_t pending = BIO_ctrl_pending(out_);
+    ssize_t const pending = BIO_ctrl_pending(out_);
     if (!pending) { return; }
-    pending++; pending--;
     ssize_t bytes = BIO_read(out_, buf, sizeof(buf));
     if (bytes > 0) {
         writeAllRaw(buf, bytes, flags);
