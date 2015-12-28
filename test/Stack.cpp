@@ -18,7 +18,7 @@ int main() {
     std::vector<Ptr<Coroutine>> coros;
 
     for (auto i = 0; i < 10; ++i) {
-        for (auto i = 0; i < 1000; ++i) {
+        for (auto j = 0; j < 1000; ++j) {
             coros.push_back(coro::start(std::bind(recurse, 100)));
         }
         hub()->quiesce();

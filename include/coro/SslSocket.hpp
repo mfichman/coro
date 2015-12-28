@@ -49,11 +49,11 @@ public:
     void usePrivateKeyFile(std::string const& path);
 
 private:
-    SslSocket(int sd, SSL_CTX* context);
+    SslSocket(SocketHandle sd, SSL_CTX* context);
     void writeAllRaw(char const* buf, size_t len, int flags);
     void writeFromBio(int flags);
     void readToBio(int flags);
-    void handleReturn(int ret);
+    void handleReturn(ssize_t ret);
 
     SSL_CTX* context_;
     SSL* conn_;

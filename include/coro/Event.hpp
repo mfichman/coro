@@ -36,6 +36,8 @@ private:
     Ptr<Coroutine> coroutine_;
 };
 
+typedef size_t EventWaitToken;
+
 class Event {
 // An event is a coroutine synchronization primitive.  A coroutine that waits
 // on an event is put to sleep until another coroutine wakes it via the notify
@@ -56,9 +58,9 @@ public:
 
 private:
     size_t waiters() const { return waiter_.size(); }
-    int waitToken(Ptr<Coroutine> waiter);
-    bool waitTokenValid(Ptr<Coroutine> waiter, int token);
-    void waitTokenDel(int token);
+    EventWaitToken waitToken(Ptr<Coroutine> waiter);
+    bool waitTokenValid(Ptr<Coroutine> waiter, EventWaitToken token);
+    void waitTokenDel(EventWaitToken token);
 
     std::vector<EventRecord> waiter_;
     friend class Selector;

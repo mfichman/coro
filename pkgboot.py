@@ -164,19 +164,20 @@ class Package:
         self.env.Append(CXXFLAGS='/Fpbuild/Common.pch')
         self.env.Append(CXXFLAGS='/Yu%s' % self.pch_header)
         self.env.Append(LINKFLAGS='/DEBUG')
+        self.env['AS'] = 'ml64'
         self.src += self.env.Glob('build/src/**.asm')
         # Add MASM assembly files
 
         self.includes.extend([
-            'C:\\WinBrew\\include',
+            os.environ['LOCALAPPDATA']+'\\WinBrew\\include',
         ])
         self.lib_path.extend([
-            'C:\\WinBrew\\lib',
+            os.environ['LOCALAPPDATA']+'\\WinBrew\\lib',
         ])
         self.path.extend([
             os.environ['PATH'],
-            'C:\\WinBrew\\lib', 
-            'C:\\WinBrew\\bin', 
+            os.environ['LOCALAPPDATA']+'\\WinBrew\\bin',
+            os.environ['LOCALAPPDATA']+'\\WinBrew\\lib',
         ])
         # Extra Windows includes
 

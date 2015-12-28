@@ -39,7 +39,7 @@ SslSocket::SslSocket(int type, int protocol) : Socket(type, protocol), context_(
     ERR_load_BIO_strings();
 }
 
-SslSocket::SslSocket(int sd, SSL_CTX* context) : Socket(sd, ""), context_(0), eof_(false) {
+SslSocket::SslSocket(SocketHandle sd, SSL_CTX* context) : Socket(sd, ""), context_(0), eof_(false) {
 // Initialize SSL server-side socket
     SSL_library_init();
     SSL_load_error_strings();
@@ -144,9 +144,9 @@ void SslSocket::writeFromBio(int flags) {
 
 void SslSocket::readToBio(int flags) {
     char buf[4096];
-    ssize_t bytes = Socket::read(buf, sizeof(buf), flags);
+    ssize_t const bytes = Socket::read(buf, sizeof(buf), flags);
     if (bytes > 0) {
-        ssize_t written = BIO_write(in_, buf, bytes);
+        ssize_t const written = BIO_write(in_, buf, int(bytes));
         assert(bytes==written);
     } else if (bytes == 0) {
         // No data
@@ -158,7 +158,7 @@ void SslSocket::readToBio(int flags) {
 
 ssize_t SslSocket::write(char const* buf, size_t len, int /* unused */) {
 retry:
-    ssize_t bytes = SSL_write(conn_, buf, len);
+    ssize_t const bytes = SSL_write(conn_, buf, int(len));
     writeFromBio(0); // Write data if available
     if (bytes < 0) {
         handleReturn(bytes);
@@ -169,7 +169,7 @@ retry:
 
 ssize_t SslSocket::read(char* buf, size_t len, int /* unused */) {
 retry:
-    ssize_t bytes = SSL_read(conn_, buf, len);
+    ssize_t const bytes = SSL_read(conn_, buf, int(len));
     if (bytes < 0) {
         handleReturn(bytes);
         if (eof_) {
@@ -180,8 +180,8 @@ retry:
     return bytes;
 }
 
-void SslSocket::handleReturn(int ret) {
-    int err = SSL_get_error(conn_, ret);
+void SslSocket::handleReturn(ssize_t ret) {
+    int const err = SSL_get_error(conn_, int(ret));
     if (SSL_ERROR_WANT_WRITE == err) {
         writeFromBio(0);
     } else if (SSL_ERROR_WANT_READ == err) {

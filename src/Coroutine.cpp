@@ -41,6 +41,65 @@ void coroStart() throw() { coroCurrent->start(); }
 
 namespace coro {
 
+#if defined(_WIN64)
+struct StackFrame {
+    void* gs16;
+    void* gs8;
+    void* gs0;
+    void* r15;
+    void* r14;
+    void* r13;
+    void* r12;
+    void* r11;
+    void* r10;
+    void* r9;
+    void* r8;
+    void* rdi;
+    void* rsi;
+    void* rdx;
+    void* rcx;
+    void* rbx;
+    void* rax;
+    void* rbp;
+    void* returnAddr;
+    void* padding;
+}; 
+#elif defined(_WIN32)
+struct StackFrame {
+    void* fs8;
+    void* fs4;
+    void* fs0;
+    void* rdi;
+    void* rsi;
+    void* rdx;
+    void* rcx;
+    void* rbx;
+    void* rax;
+    void* rbp;
+    void* returnAddr; // coroStart() stack frame here
+};
+#else
+struct StackFrame {
+    void* r15;
+    void* r14;
+    void* r13;
+    void* r12;
+    void* r11;
+    void* r10;
+    void* r9;
+    void* r8;
+    void* rdi;
+    void* rsi;
+    void* rdx;
+    void* rcx;
+    void* rbx;
+    void* rax;
+    void* rbp;
+    void* returnAddr;
+    void* padding;
+}; 
+#endif
+
 uint64_t pageRound(uint64_t addr, uint64_t multiple) {
 // Rounds 'base' to the nearest 'multiple'
     return (addr/multiple)*multiple;
@@ -99,53 +158,16 @@ void Coroutine::init(std::function<void()> const& func) {
     event_.reset(new Event); 
     func_ = func;
     status_ = Coroutine::NEW;
-
-#ifdef _WIN32
-    assert((((uint8_t*)this)+8)==(uint8_t*)&stackPointer_);
-#else
-    assert((((uint8_t*)this)+16)==(uint8_t*)&stackPointer_);
-#endif
-
-#ifdef _WIN32
-    struct StackFrame {
-        void* fs8;
-        void* fs4;
-        void* fs0;
-        void* rdi;
-        void* rsi;
-        void* rdx;
-        void* rcx;
-        void* rbx;
-        void* rax;
-        void* rbp;
-        void* returnAddr; // coroStart() stack frame here
-    };
-#else
-    struct StackFrame {
-        void* r15;
-        void* r14;
-        void* r13;
-        void* r12;
-        void* r11;
-        void* r10;
-        void* r9;
-        void* r8;
-        void* rdi;
-        void* rsi;
-        void* rdx;
-        void* rcx;
-        void* rbx;
-        void* rax;
-        void* rbp;
-        void* returnAddr;
-        void* padding;
-    }; 
-#endif
+    assert((((uint8_t*)this)+2*sizeof(uint8_t*))==(uint8_t*)&stackPointer_);
 
     StackFrame frame;
     memset(&frame, 0, sizeof(frame));
-#ifdef _WIN32
-    frame.fs0 = (void*)0xffffffff; // Root-level SEH handler
+#ifdef _WIN64
+    frame.gs0 = (void*)-1; // Root-level SEH handler
+    frame.gs8 = stack_.end();// Top of stack
+    frame.gs16 = stack_.begin(); // Bottom of stack
+#elif defined(_WIN32) 
+    frame.fs0 = (void*)-1; // Root-level SEH handler
     frame.fs4 = stack_.end();// Top of stack
     frame.fs8 = stack_.begin(); // Bottom of stack
     // See: http://stackoverflow.com/questions/9249576/seh-setup-for-fibers-with-exception-chain-validation-sehop-active

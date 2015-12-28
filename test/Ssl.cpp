@@ -51,7 +51,6 @@ void testClientServer() {
 		ls.reset();
         char const buf[] = "foobar\n";
         sd->writeAll(buf, sizeof(buf)-1);
-		sd->shutdown(SHUT_RD);
 
 		char buf2[4096];
 		while (sd->read(buf2, sizeof(buf2))) {
@@ -64,6 +63,7 @@ void testClientServer() {
 
         char const buf[] = "GET / HTTP/1.1\nHost: 127.0.0.1\nConnection: close\n\n";
         sd->writeAll(buf, sizeof(buf)-1); 
+		sd->shutdown(SHUT_WR);
     
         char buf2[4096];
         std::stringstream ss;
