@@ -13,4 +13,4 @@ auto c = coro::start([]() {
 coro::run(); // runs the coroutine dispatch loop
 ```
 
-Support for OS X, Windows, and Linux!
+Support for OS X and Windows!
