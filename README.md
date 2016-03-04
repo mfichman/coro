@@ -3,7 +3,7 @@ coro
 
 Modern coroutine library for C++, including an async socket I/O implementation (with SSL support).
 
-Basic usage:
+## Basic Usage
 
 ```
 auto c = coro::start([]() {
@@ -14,3 +14,11 @@ coro::run(); // runs the coroutine dispatch loop
 ```
 
 Support for OS X and Windows!
+
+## Building
+
+```
+pip install scons
+cd coro
+scons
+```
