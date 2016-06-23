@@ -50,20 +50,20 @@ void Event::wait() {
     current()->wait();
 }
 
-int Event::waitToken(Ptr<Coroutine> waiter) {
+size_t Event::waitToken(Ptr<Coroutine> waiter) {
     waiter_.push_back(EventRecord(current()));
     return waiter_.size()-1;
 }
 
-bool Event::waitTokenValid(Ptr<Coroutine> waiter, int token) {
-    if (size_t(token) < waiter_.size()) {
+bool Event::waitTokenValid(Ptr<Coroutine> waiter, EventWaitToken token) {
+    if (token < waiter_.size()) {
         return waiter_[token].coroutine() == waiter;
     } else {
         return false;
     }
 }
 
-void Event::waitTokenDel(int token) {
+void Event::waitTokenDel(EventWaitToken token) {
     assert(size_t(token) < waiter_.size() && "invalid wait token");
     waiter_[token] = EventRecord();
 }

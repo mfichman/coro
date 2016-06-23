@@ -1,4 +1,24 @@
 coro
 ====
 
-Modern coroutine library for C++
+Modern coroutine library for C++, including an async socket I/O implementation (with SSL support).
+
+## Basic Usage
+
+```
+auto c = coro::start([]() {
+   std::cout << "I'm a coroutine!" << std::endl;
+   coro::sleep(coro::Time::millisec(100));
+});
+coro::run(); // runs the coroutine dispatch loop
+```
+
+Support for OS X and Windows!
+
+## Building
+
+```
+pip install scons
+cd coro
+scons
+```

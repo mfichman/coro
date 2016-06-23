@@ -23,6 +23,7 @@
 #pragma once
 
 #include "coro/Common.hpp"
+#include "coro/Event.hpp"
 
 namespace coro {
 
@@ -30,16 +31,16 @@ typedef std::function<void()> SelectorFunc;
 
 class SelectorRecord {
 public:
-    SelectorRecord(Ptr<Event> event, SelectorFunc func, int token);
+    SelectorRecord(Ptr<Event> event, SelectorFunc func, EventWaitToken token);
 
     Ptr<Event> event() const { return event_; }
     SelectorFunc func() const { return func_; }
-    int token() const { return token_; }
+    EventWaitToken token() const { return token_; }
 
 private:
     Ptr<Event> event_;
     SelectorFunc func_; 
-    int token_;
+    EventWaitToken token_;
 };
 
 class Selector {

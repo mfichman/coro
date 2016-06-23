@@ -28,7 +28,7 @@
 
 namespace coro {
 
-SelectorRecord::SelectorRecord(Ptr<Event> event, SelectorFunc func, int token) {
+SelectorRecord::SelectorRecord(Ptr<Event> event, SelectorFunc func, EventWaitToken token) {
     event_ = event;
     func_ = func;
     token_ = token;

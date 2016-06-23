@@ -46,6 +46,12 @@ public:
     SocketCloseException() {}
 };
 
+#ifdef _WIN32
+typedef SOCKET SocketHandle;
+#else
+typedef int SocketHandle;
+#endif
+
 class Socket {
 // Emulates Berkeley sockets using yields to block the coroutine when I/O
 // operations cannot complete right away.  Actually, this class is more like
@@ -68,11 +74,11 @@ public:
     void setsockopt(int level, int option, int value);
 
 protected:
-    Socket(int sd, char const* bogus);
-    int acceptRaw();
+    Socket(SocketHandle sd, char const* bogus);
+    SocketHandle acceptRaw();
 
 private:
-    int sd_;
+    SocketHandle sd_;
 };
 
 }

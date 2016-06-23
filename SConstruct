@@ -11,8 +11,8 @@ class Coro(pkgboot.Package):
         pkgboot.Lib('advapi32', 'win32'),
         pkgboot.Lib('user32', 'win32'),
         pkgboot.Lib('gdi32', 'win32'),
-        pkgboot.Lib('libeay32', 'win32'),
-        pkgboot.Lib('ssleay32', 'win32'),
+        pkgboot.Lib('libeay', 'win32'),
+        pkgboot.Lib('ssleay', 'win32'),
         pkgboot.Lib('ssl', 'darwin'),
         pkgboot.Lib('crypto', 'darwin'),
     ]

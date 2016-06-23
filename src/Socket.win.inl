@@ -80,7 +80,7 @@ void Socket::connect(SocketAddr const& addr) {
     }
 }
 
-int Socket::acceptRaw() {
+SocketHandle Socket::acceptRaw() {
     // Waits for a client to connect, then returns a pointer to the established
     // connection.  The code below is a bit tricky, because Windows expects the
     // call to accept() to happen before the I/O event can be triggered.  For
@@ -134,7 +134,7 @@ int Socket::acceptRaw() {
     // specifying sAcceptSocket as the socket handle and sListenSocket as the
     // option value.
     char const* opt = (char const*)&ls;
-    size_t optlen = sizeof(ls);
+    int const optlen = int(sizeof(ls));
     if (::setsockopt(sd, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, opt, optlen)) {
         throw SystemError();
     }
@@ -159,7 +159,7 @@ bool isSocketCloseError(DWORD error) {
 
 ssize_t Socket::read(char* buf, size_t len, int flags) {
 // Read from the socket asynchronously.  Returns the # of bytes read.
-    WSABUF wsabuf = { len, buf };
+    WSABUF wsabuf = { ULONG(len), buf };
     Overlapped op{0};
     op.coroutine = current().get();
     OVERLAPPED* evt = &op.overlapped;
@@ -190,7 +190,7 @@ ssize_t Socket::read(char* buf, size_t len, int flags) {
 
 ssize_t Socket::write(char const* buf, size_t len, int flags) {
 // Write to the socket asynchronously.  Returns the # of bytes written.
-    WSABUF wsabuf = { len, (LPSTR)buf };
+    WSABUF wsabuf = { ULONG(len), LPSTR(buf) };
     Overlapped op{0};
     op.coroutine = current().get();
     OVERLAPPED* evt = &op.overlapped;
