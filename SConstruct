@@ -3,7 +3,9 @@ import pkgboot
 
 class Coro(pkgboot.Package):
     defines = {}
-    includes = []
+    includes = [
+        '/usr/local/opt/openssl/include',
+    ]
     libs = [
         pkgboot.Lib('ws2_32', 'win32'),
         pkgboot.Lib('advapi32', 'win32'),

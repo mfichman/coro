@@ -20,7 +20,7 @@
 
 
 # Pointer to the current coroutine.  Used by Coroutine__resume() to set the
-# 'caller' of the coroutine that is being resumed, and by Coroutine__yield() to
+# caller of the coroutine that is being resumed, and by Coroutine__yield() to
 # switch from the current coroutine to the caller.
 
 
